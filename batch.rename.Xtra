@@ -1,0 +1,225 @@
+#!/usr/bin/ruby
+
+########################
+###   Batch Rename   ###
+########################
+@version = "1.3.12"
+
+# Based on script by Dmitry Nedospasov
+# Updated & expanded by Matt Jordan -
+
+# --- TODO ---
+# error on name collisions
+# lock files during name changes?  nesessary?
+# check permissions
+# is file locked?
+# error catching
+# => add options!!!
+
+#gsub mode in addition to other modes?
+#or make the gsub mode heliocentric, with all other functionality orbiting around it?
+
+# => -a  All option - do these things to all files
+# => -r --recurse (recursive rename)
+  # => use a confirmation to prevent chaos?
+# => -d --directories (rename directories as well?)
+# => -p --print (print changed files)
+# => -v --version
+# => -t --test (dry run w/ report)
+# => --uppercase
+#   => all
+#   => extensions
+# => --lowercase
+#   => all
+#   => extensions
+# => --propercase
+#   => all
+#   => extensions
+# => --sentencecase
+
+# => rename w/ appended numbers
+#   => based on date & time?
+# => rename based on index?
+# => from range?
+# => extensions
+#   => append
+#   => replace extensions
+#   => swap
+#   => preserve extensions (works with trims as well)
+# => trim-first (number of characters forward or backwards)
+# => trim-last (number of characters forward or backwards)
+
+# => --date
+# => confirm mode?
+#
+# save often used renames as 'profiles'?
+# use regular expressions
+# input case sensitivity on/off
+# make compatible with windows?
+# replace *around* wildcards
+# replace several sets of text at once
+
+#
+# => Process???
+# => Parse Args
+# => Get files -> get list of files
+# => Rename Engine
+#   => modular
+#   => enable features & engine differences with flags?
+#   => write seperate cases depending on options?
+    # => not very flexible, harder to use seperate options together
+#   => seperate cases and modifier options (with flags?)
+#
+#
+#
+
+require 'rubygems'
+require 'ftools'
+require 'optiflag'
+
+module Example extend OptiFlagSet
+  optional_switch_flag "ignorecase" do
+    description "Ignore input case."
+    alternate_forms "i", "I"
+  end
+
+  optional_flag "directory" do 
+     description "Directory containing target files."
+     alternate_forms "D", "d"
+  end
+
+  and_process!
+end 
+
+def format_directory()
+  if ARGV.flags.directory == nil
+    @dir = `pwd`.chomp + "/"
+  else
+    @dir = ARGV.flags.directory
+
+    @dir.strip!
+
+    #adds cwd to @dir if path is relative
+    unless @dir[0,1] == "/"
+      @dir = `pwd`.chomp + "/" + @dir
+    end
+
+    #add trailing slash if needed  
+    unless @dir[-1,1] == "/"
+      @dir = @dir + "/"
+    end
+    
+    #test directory for existance?
+
+  end
+
+  #get rid of whitespace
+#  @dir.gsub!(/\s/,'\\ ')
+
+end #format_directory
+
+def main(arguments, stdin)
+
+  format_directory
+
+  puts @dir
+
+  temp = ARGV[0] 
+
+  oldExt = arguments[0]
+  newExt = arguments[1]
+  @searchcount = 0
+  @renamecount = 0
+
+#  if ARGV.flags.version?
+#    puts @version
+#    exit
+#  end
+
+  if ARGV.length >= 9
+    puts 'Too many arguments'
+    puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
+  elsif oldExt == nil
+    puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
+  elsif  @dir == nil
+    puts  'Script failed. Could not automagically retrive current working directory.'
+  else
+    if newExt == nil
+      puts "deleting #{oldExt} from file names..."
+    else
+      puts "renaming #{oldExt} to #{newExt}"
+    end
+    convertFromTo(@dir,oldExt,newExt)
+    print "#{@searchcount} files were searched.\n"
+    print "#{@renamecount} files were successfully renamed.\n"
+  end
+end
+
+
+def convertFromTo(dir, oldExt, newExt)
+
+
+  Dir.foreach(dir) do |f|
+
+    #skip file if it is . or .. or directory
+    next if f == '.' or f == '..'
+    next if File.directory?(f)
+    @searchcount += 1
+
+    # fullPath = fullPath.gsub(' ','\ ')
+
+# => if file is a directory recurse into it
+#    if File.directory?(fullPath)
+#      convertFromTo(fullPath, oldExt, newExt)
+#    else
+
+   if newExt == nil
+     newName = f.gsub(oldExt,'')
+   else
+     newName = f.gsub(oldExt,newExt)
+   end
+
+    if f != newName
+    @renamecount += 1
+      
+# =>  list file option
+#      puts f + '  ->  ' + newName
+      File.rename(f,newName)
+    end
+  end #do
+end #def
+
+
+main(ARGV, STDIN)
+
+
+
+
+
+
+
+#def convertFromTo(dir, oldExt, newExt)
+##  Dir.chdir(pwd.chomp)
+#
+## files = an array containing all filenames in given directory
+#  files = Dir.entries(dir)  
+#  files.each do |f|
+#    next if f == '.' or f == '..'
+#    fullPath = dir + '/' + f
+#    # fullPath = fullPath.gsub(' ','\ ')
+#    if File.directory?(fullPath)
+#      puts 'Found directory: ' + fullPath
+#      convertFromTo(fullPath, oldExt, newExt)
+#    else
+#      if newExt == nil
+#        newName = fullPath.gsub(oldExt,'')
+#      else
+#        newName = fullPath.gsub(oldExt,newExt)
+#      end
+#      if fullPath != newName
+#        puts fullPath + ' -> ' + newName
+#        File.rename(fullPath,newName)
+#      end
+#    end
+#  end
+#end

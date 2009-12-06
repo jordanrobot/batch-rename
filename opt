@@ -1,0 +1,79 @@
+#/usr/bin/ruby
+
+require 'rubygems'
+require 'ftools'
+require 'optiflag'
+
+module Optsss extend OptiFlagSet
+
+  optional_switch_flag "ignorecase" do
+    description "Ignore input case."
+    alternate_forms "i", "I"
+  end
+
+  optional_flag "directory" do 
+     description "Directory containing target files."
+     alternate_forms "D", "d"
+  end
+
+  and_process!
+end 
+
+class Weird
+
+  def initialize()
+    format_directory
+
+
+    if ARGV.length == 0
+      puts "needs at least one argument!"
+    end
+
+    puts ARGV.length
+
+
+    if ARGV.flags.ignorecase
+      output_large
+    else
+      output_small
+    end
+  end
+
+  def format_directory()
+    if ARGV.flags.directory == nil
+      @dir = `pwd`.chomp + "/"
+    else
+      @dir = ARGV.flags.directory
+
+      @dir.strip!
+
+      #adds cwd to @dir if path is relative
+      unless @dir[0,1] == "/"
+        @dir = `pwd`.chomp + "/" + @dir
+      end
+
+      #add trailing slash if needed  
+      unless @dir[-1,1] == "/"
+        @dir = @dir + "/"
+      end
+
+      #test directory for existance?
+
+    end
+
+  end #format_directory
+
+  def output_small()
+    puts @dir
+    puts ARGV[0]
+  end
+
+  def output_large()
+    puts ARGV.flags.directory.upcase
+    puts ARGV[0].upcase
+
+  end
+
+end
+
+bob = Weird.new

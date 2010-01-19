@@ -31,6 +31,10 @@ args = Getopt::Declare.new(<<'EOF')
 { $downcase = 1}
 --lowercase                [ditto]
 
+-a                      all
+{ $apply_to_all = 1}
+--all                [ditto]
+
 
 EOF
 
@@ -39,6 +43,17 @@ class Filelist
   def initialize()
     $dir = `pwd`.chomp + "/"
     @orig_list_array = Array.new
+
+    #check for existance of dir - abort if not
+    begin
+      if $dir == nil
+          a = 1/0 #raise exception to abort program
+      end
+    rescue
+      puts  'Script failed. Could not automagically retrive current working directory.'
+      a = 1/0 #raise exception to abort program
+    ensure
+    end
 
     #create an array of all the filenames - skip directories
     Dir.foreach($dir) do |f|
@@ -65,9 +80,21 @@ class Filelist
 
 
   def pattern()
+    
+    # Error check - abort if no pattern!
+    begin
+      if $pattern == nil
+        a = 1/0 #raise exception to abort program
+      end
+    rescue
+      puts  'Script requires PATTERN for a PATTERN substitution.'
+      a = 1/0 #raise exception to abort program
+    ensure
+    end
+    
     @positive_array = Array.new
     @negative_array = Array.new
-puts $ignore_case
+
     #search for matching patterns - divy the results into two arrays
     # Also deal with the ignore case switch here.
     if $ignore_case == 1
@@ -100,6 +127,7 @@ puts $ignore_case
 
   end #pattern
 
+
   def create_hash()
     #create hash from array
     @list_hash = Hash[ *@list_array.collect { |v| [ v, v ] }.flatten ]
@@ -131,20 +159,44 @@ puts $ignore_case
 
 
   def substitute()
+
+    #error checking for errant options
+    # cannot use -all option with sub.
+    begin
+      if $apply_to_all == 1
+        a = 1/0 #raise exception to abort program
+      end
+    rescue
+      puts  'Script aborted, you cannot apply a PATTERN substitution to all files.'
+      a = 1/0 #raise exception to abort program
+    ensure
+    end
+
+    #error checking for errant options
+    # cannot use -invert option with sub.
+    begin
+      if $invert_pattern == 1
+        a = 1/0 #raise exception to abort program
+        end
+      rescue
+        puts  'Script aborted, you cannot apply a PATTERN substitution with the invert option.'
+        a = 1/0 #raise exception to abort program
+      ensure
+      end
+
     #populate @list_hash values with gsubbed keys
     sub_hash = Hash.new
 
     @list_hash.each_key do |key,value|
-      if $replacement == nil
-        puts "deleting #{$pattern} from file names..."
-        sub_hash[key] = key.gsub($pattern,'')
+      if $ignore_case == 1
+        sub_hash[key] = key.gsub(/#{$pattern}/i,$replacement)
       else
-        puts "renaming #{$pattern} to #{$replacement}"
         sub_hash[key] = key.gsub($pattern,$replacement)
       end #if
     end #each.key
 
     @list_hash.merge!(sub_hash)
+
   end #substitute
 
 
@@ -167,42 +219,37 @@ puts $ignore_case
 end #filelist
 
 
-def main(arguments, stdin)
-
-  $pattern = arguments[0]
-  $replacement = arguments[1]
+def main()
+  $pattern = ARGV[0]
+  $replacement = ARGV[1]
+  if $replacement == nil
+    $replacement = ''
+  end
 
   bob = Filelist.new
-  bob.pattern
-  bob.create_hash
-if $upcase == 1
-  then
-  bob.upcase
-elsif $downcase == 1
-  then
-  bob.downcase
-else
-  bob.substitute
-end
 
-  #  bob.downcase
-
-
-  if ARGV.length >= 3
-    puts 'Too many arguments'
-    puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
-  elsif $pattern == nil
-    puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
-  elsif  $dir == nil
-    puts  'Script failed. Could not automagically retrive current working directory.'
-  else
-    bob.rename_action
-    print "#{$renamecount} of #{$searchcount} files were affected.\n"
+  unless $apply_to_all == 1
+    bob.pattern
   end
-end
+
+  bob.create_hash
+
+  if $upcase == 1
+    then
+    bob.upcase
+  elsif $downcase == 1
+    then
+    bob.downcase
+  else
+    bob.substitute
+  end
+
+  bob.rename_action
+  print "#{$renamecount} of #{$searchcount} files were affected.\n"
+end #main
 
 
 #begin
-main(ARGV, STDIN)
+main()
 #rescue
 #end

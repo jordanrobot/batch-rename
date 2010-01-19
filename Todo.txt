@@ -12,9 +12,6 @@
 # => lock files during name changes?  nesessary?
 
 
-
-
-
 ### Selecting Files (PATTERN stuff) ###
 
 # => Regex support?
@@ -22,15 +19,19 @@
 
 ### All option; -a --all
 # => disregard PATTERN matching; do these things to all files.
-# => Only able to be used in append, prepend, & indexes
+# => Only able to be used in append, prepend, indexes, upcase, downcase, sentencecase
+# => only compatible with some operations
 
 ### Inclusion Mode; -I --include
 # => perform operations on the whole filename found by a PATTERN match
 # => implied with propercase or sentencecase
+# => only compatible with some operations.
 
 ### Inversion Mode?; -i --invert
 # => Invert results from PATTERN match
 # => instead of: "affect only matches"; acts like: "affect only not matches". 
+# => only compatible with some operations.
+  # => not substitution
 
 ### Ignore PATTERN case; -
 

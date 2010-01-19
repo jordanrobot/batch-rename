@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.4.103"
+$version = "1.4.122"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
@@ -15,7 +15,7 @@ require "Getopt/Declare"
 
 args = Getopt::Declare.new(<<'EOF')
 
--i                  invert
+-i                  invert [requires: -u || --uppercase || -l || --lowercase] [excludes: -a --all]
 { $invert_pattern = 1 }
 --invert            [ditto]
 
@@ -23,21 +23,30 @@ args = Getopt::Declare.new(<<'EOF')
 { $ignore_case = 1 }
 --case              [ditto]
 
--u                  upcase
+-u                  upcase [excludes: -l --lowercase]
 { $upcase = 1 }
 --uppercase         [ditto]
 
--l                  lowercase
+-l                  lowercase [excludes: -u --uppercase]
 { $downcase = 1}
 --lowercase         [ditto]
 
--a                  all
+-a                  all [requires: -u || --uppercase || -l || --lowercase]
 { $apply_to_all = 1}
 --all               [ditto]
 
 -v                  Version
 { $print_version = 1 }
 --version           [ditto]
+
+-V                  Verbose [excludes: -q --quiet]
+{ $verbose = 1 }
+--verbose           [ditto]
+
+-q                  Quiet [excludes: -V --verbose]
+{ $quiet = 1 }
+--quiet           [ditto]
+
 
 EOF
 
@@ -212,16 +221,34 @@ class Filelist
       #check for duplicate key/value, & files - prevent clobbering
       if key != value and not @orig_list_array.include?(value)
         @renamecount += 1
+
         File.rename(key, value)
-      end
+
+        if $verbose == 1
+          puts "#{key}  >>>   #{value}"
+        end #if verbose
+
+      else
+
+        #announce clobbering
+        if $verbose == 1
+          puts "#{key} will clobber #{value}; rename aborted."
+        end
+
+      end #anti-clobber
+
     end #@list_hash.each
-  print "#{@renamecount} of #{@searchcount} files were affected.\n"
+
+  unless $quiet == 1
+    print "#{@renamecount} of #{@searchcount} files were affected.\n"
+  end
+  
   end #rename_action
 
 end #filelist
 
 def print_usage()
-  puts  'Usage: batch.rename [-iaulv] [PATTERN] [REPLACEMENT]'
+  puts  'Usage: batch.rename [-acilquvV] [PATTERN] [REPLACEMENT]'
 end
 
 def print_version()

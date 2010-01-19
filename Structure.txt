@@ -1,13 +1,15 @@
 main
 	$pattern
 	$replacement
-	$apply_to_all
-	$upcase
-	$downcase
-	$print_version
+	$apply_to_all (flag)
+	$upcase (flag)
+	$downcase (flag)
+	$print_version (flag)
+	$quiet (flag)
+	$verbose (flag)
 	
 print_version
-  -> $print_version
+  -> $print_version (flag)
 
 print_usage
 
@@ -17,7 +19,7 @@ print_usage
 			$dir
 			@orig_list_array
 			@list_array
-			$searchcount
+			@searchcount
 
 		pattern
 			-> $pattern
@@ -50,6 +52,6 @@ print_usage
 		
 		
 		rename_action
-			$renamecount
+			@renamecount
 			-> (mod) @list_hash
 			-> @orig_list_array

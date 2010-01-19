@@ -1,0 +1,55 @@
+main
+	$pattern
+	$replacement
+	$apply_to_all
+	$upcase
+	$downcase
+	$print_version
+	
+print_version
+  -> $print_version
+
+print_usage
+
+	Filelist object (class)
+			
+		init
+			$dir
+			@orig_list_array
+			@list_array
+			$searchcount
+
+		pattern
+			-> $pattern
+			-> $ignore_case
+			-> @orig_list_array
+			-> @list_array
+			positive_array
+			negative array
+			
+			
+		create hash
+			@list_hash
+			-> @list_array
+		
+		upcase
+			up_hash
+			->(mods) @list_hash
+			
+
+		downcase
+			down_hash
+			->(mods) @list_hash
+
+		substitute
+			-> $apply_to_all
+			-> $invert_pattern
+			sub_hash
+			->(mod) @list_hash
+			
+		
+		
+		rename_action
+			$renamecount
+			-> (mod) @list_hash
+			-> @orig_list_array

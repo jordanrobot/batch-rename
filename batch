@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-@version = "1.4.80"
+$version = "1.4.103"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
@@ -15,26 +15,29 @@ require "Getopt/Declare"
 
 args = Getopt::Declare.new(<<'EOF')
 
--i                      invert
+-i                  invert
 { $invert_pattern = 1 }
---invert                [ditto]
+--invert            [ditto]
 
--c                      ignore Pattern Case
+-c                  ignore Pattern Case
 { $ignore_case = 1 }
---case                  [ditto]
+--case              [ditto]
 
--u                      upcase
+-u                  upcase
 { $upcase = 1 }
---uppercase                [ditto]
+--uppercase         [ditto]
 
--l                      lowercase
+-l                  lowercase
 { $downcase = 1}
---lowercase                [ditto]
+--lowercase         [ditto]
 
--a                      all
+-a                  all
 { $apply_to_all = 1}
---all                [ditto]
+--all               [ditto]
 
+-v                  Version
+{ $print_version = 1 }
+--version           [ditto]
 
 EOF
 
@@ -74,11 +77,10 @@ class Filelist
     ensure
     end
 
-    $searchcount = @orig_list_array.length
+    @searchcount = @orig_list_array.length
 
   end #init
-
-
+    
   def pattern()
     
     # Error check - abort if no pattern!
@@ -87,13 +89,13 @@ class Filelist
         a = 1/0 #raise exception to abort program
       end
     rescue
-      puts  'Script requires PATTERN for a PATTERN substitution.'
-      a = 1/0 #raise exception to abort program
+      print_usage
+      exit #raise exception to abort program
     ensure
     end
     
-    @positive_array = Array.new
-    @negative_array = Array.new
+    positive_array = Array.new
+    negative_array = Array.new
 
     #search for matching patterns - divy the results into two arrays
     # Also deal with the ignore case switch here.
@@ -101,9 +103,9 @@ class Filelist
       @orig_list_array.each do |a|
         #search for match to pattern
         if a.downcase.include?($pattern.downcase)
-          @positive_array << a
+          positive_array << a
         else
-          @negative_array << a
+          negative_array << a
         end
       end #@list_array.each
 
@@ -111,18 +113,18 @@ class Filelist
       @orig_list_array.each do |a|
         #search for match to pattern
         if a.include?($pattern)
-          @positive_array << a
+          positive_array << a
         else
-          @negative_array << a
+          negative_array << a
         end
       end #@list_array.each
     end #if $ignore_case
 
     #Deal with inversion pattern here:
     if $invert_pattern == 1
-      @list_array = @negative_array
+      @list_array = negative_array
     else
-      @list_array = @positive_array
+      @list_array = positive_array
     end
 
   end #pattern
@@ -164,11 +166,11 @@ class Filelist
     # cannot use -all option with sub.
     begin
       if $apply_to_all == 1
-        a = 1/0 #raise exception to abort program
+        a = 1/0  #raise exception to abort program
       end
     rescue
       puts  'Script aborted, you cannot apply a PATTERN substitution to all files.'
-      a = 1/0 #raise exception to abort program
+      exit #raise exception to abort program
     ensure
     end
 
@@ -177,12 +179,12 @@ class Filelist
     begin
       if $invert_pattern == 1
         a = 1/0 #raise exception to abort program
-        end
-      rescue
-        puts  'Script aborted, you cannot apply a PATTERN substitution with the invert option.'
-        a = 1/0 #raise exception to abort program
-      ensure
       end
+    rescue
+      puts  'Script aborted, you cannot apply a PATTERN substitution with the invert option.'
+      exit #raise exception to abort program
+    ensure
+    end
 
     #populate @list_hash values with gsubbed keys
     sub_hash = Hash.new
@@ -201,7 +203,7 @@ class Filelist
 
 
   def rename_action()
-    $renamecount = 0
+    @renamecount = 0
 
     #get rid of empty values in the hash.
     @list_hash.delete_if { |key, value| value == '' }
@@ -209,17 +211,30 @@ class Filelist
 
       #check for duplicate key/value, & files - prevent clobbering
       if key != value and not @orig_list_array.include?(value)
-        $renamecount += 1
+        @renamecount += 1
         File.rename(key, value)
       end
     end #@list_hash.each
+  print "#{@renamecount} of #{@searchcount} files were affected.\n"
   end #rename_action
-
 
 end #filelist
 
+def print_usage()
+  puts  'Usage: batch.rename [-iaulv] [PATTERN] [REPLACEMENT]'
+end
+
+def print_version()
+  if $print_version == 1
+  puts "Batch Rename v. #{$version}"
+  exit
+  end
+end
+
 
 def main()
+
+  print_version     
   $pattern = ARGV[0]
   $replacement = ARGV[1]
   if $replacement == nil
@@ -245,7 +260,6 @@ def main()
   end
 
   bob.rename_action
-  print "#{$renamecount} of #{$searchcount} files were affected.\n"
 end #main
 
 

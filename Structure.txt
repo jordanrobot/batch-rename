@@ -7,16 +7,16 @@ main
 	$print_version (flag)
 	$quiet (flag)
 	$verbose (flag)
-	
+
 print_version
   -> $print_version (flag)
 
 print_usage
 
 	Filelist object (class)
-			
+
 		init
-			$dir
+			@dir
 			@orig_list_array
 			@list_array
 			@searchcount
@@ -28,16 +28,14 @@ print_usage
 			-> @list_array
 			positive_array
 			negative array
-			
-			
+
 		create hash
 			@list_hash
 			-> @list_array
-		
+
 		upcase
 			up_hash
 			->(mods) @list_hash
-			
 
 		downcase
 			down_hash
@@ -48,9 +46,10 @@ print_usage
 			-> $invert_pattern
 			sub_hash
 			->(mod) @list_hash
-			
-		
-		
+
+!		extension filter?
+
+
 		rename_action
 			@renamecount
 			-> (mod) @list_hash

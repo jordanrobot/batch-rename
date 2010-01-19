@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.4.122"
+$version = "1.4.159"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
@@ -15,7 +15,7 @@ require "Getopt/Declare"
 
 args = Getopt::Declare.new(<<'EOF')
 
--i                  invert [requires: -u || --uppercase || -l || --lowercase] [excludes: -a --all]
+-i                  invert [requires: (-u || --uppercase) || (-l || --lowercase)] [excludes: -a --all]
 { $invert_pattern = 1 }
 --invert            [ditto]
 
@@ -45,30 +45,35 @@ args = Getopt::Declare.new(<<'EOF')
 
 -q                  Quiet [excludes: -V --verbose]
 { $quiet = 1 }
---quiet           [ditto]
+--quiet             [ditto]
+
+-h                  Help
+{ $help = 1 }
+--help              [ditto]
 
 
 EOF
 
 
 class Filelist
+
   def initialize()
-    $dir = `pwd`.chomp + "/"
+
+    @dir = `pwd`.chomp + "/"
     @orig_list_array = Array.new
+
 
     #check for existance of dir - abort if not
     begin
-      if $dir == nil
-          a = 1/0 #raise exception to abort program
-      end
+      @dir == nil ? a = 1/0 : nil
     rescue
       puts  'Script failed. Could not automagically retrive current working directory.'
-      a = 1/0 #raise exception to abort program
+      exit
     ensure
     end
 
     #create an array of all the filenames - skip directories
-    Dir.foreach($dir) do |f|
+    Dir.foreach(@dir) do |f|
       next if f == '.' or f == '..'
       next if File.directory?(f)
       @orig_list_array << f
@@ -106,6 +111,7 @@ class Filelist
     positive_array = Array.new
     negative_array = Array.new
 
+
     #search for matching patterns - divy the results into two arrays
     # Also deal with the ignore case switch here.
     if $ignore_case == 1
@@ -129,6 +135,7 @@ class Filelist
       end #@list_array.each
     end #if $ignore_case
 
+
     #Deal with inversion pattern here:
     if $invert_pattern == 1
       @list_array = negative_array
@@ -146,26 +153,30 @@ class Filelist
 
 
   def upcase()
+
     up_hash = Hash.new
+
     @list_hash.each_key do |key|
       up_hash[key]=key.to_s.upcase
     end
 
-    #populate @list_hash values with upcased keys
-    puts "Changing file names to Uppercase."
+    print !$quiet ? "Changing file names to Uppercase.\n" : nil
+
     @list_hash.merge!(up_hash)
   end #upcase
 
 
   def downcase()
+
     down_hash = Hash.new
+
     @list_hash.each_key do |key|
       down_hash[key]=key.to_s.downcase
     end
 
-    #populate @list_hash values with downcased keys
+    print !$quiet ? "Changing file names to Lowercase.\n" : nil
+
     @list_hash.merge!(down_hash)
-    puts "Changing file names to Lowercase."
   end #downcase
 
 
@@ -174,21 +185,16 @@ class Filelist
     #error checking for errant options
     # cannot use -all option with sub.
     begin
-      if $apply_to_all == 1
-        a = 1/0  #raise exception to abort program
-      end
+      $apply_to_all ? a = 1/0 : nil
     rescue
-      puts  'Script aborted, you cannot apply a PATTERN substitution to all files.'
-      exit #raise exception to abort program
+      puts  'Ignoring the all option while performing a PATTERN substitution.'
     ensure
     end
 
     #error checking for errant options
     # cannot use -invert option with sub.
     begin
-      if $invert_pattern == 1
-        a = 1/0 #raise exception to abort program
-      end
+      $invert_pattern ? a = 1/0 : nil
     rescue
       puts  'Script aborted, you cannot apply a PATTERN substitution with the invert option.'
       exit #raise exception to abort program
@@ -224,32 +230,27 @@ class Filelist
 
         File.rename(key, value)
 
-        if $verbose == 1
-          puts "#{key}  >>>   #{value}"
-        end #if verbose
-
+        #announce renames
+        print $verbose == 1? "#{key}  >>>   #{value}\n" : ""
+        
       else
 
         #announce clobbering
-        if $verbose == 1
-          puts "#{key} will clobber #{value}; rename aborted."
-        end
+        print $verbose == 1? "#{key} will clobber #{value}; rename aborted.\n" : ""
 
-      end #anti-clobber
-
+      end #anti-clobber if
     end #@list_hash.each
 
-  unless $quiet == 1
-    print "#{@renamecount} of #{@searchcount} files were affected.\n"
-  end
+  print $quiet != 1? "#{@renamecount} of #{@searchcount} files were affected.\n" : ""
   
   end #rename_action
-
 end #filelist
+
 
 def print_usage()
   puts  'Usage: batch.rename [-acilquvV] [PATTERN] [REPLACEMENT]'
 end
+
 
 def print_version()
   if $print_version == 1
@@ -259,14 +260,16 @@ def print_version()
 end
 
 
+def print_help()  
+end
+
+
 def main()
 
   print_version     
   $pattern = ARGV[0]
   $replacement = ARGV[1]
-  if $replacement == nil
-    $replacement = ''
-  end
+  $replacement ||= ''
 
   bob = Filelist.new
 

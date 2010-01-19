@@ -1,0 +1,114 @@
+#!/usr/bin/ruby
+
+########################
+###   Batch Rename   ###
+########################
+@version = "1.4.18"
+
+# Based on script by Dmitry Nedospasov
+# Updated & expanded by Matt Jordan -
+
+
+require 'rubygems'
+require 'ftools'
+
+class Filelist
+  def initialize()
+    $dir = `pwd`.chomp + "/"
+    @list_array = Array.new
+    $searchcount = 0
+
+    #create an "all" array - skip directories
+    Dir.foreach($dir) do |f|    
+      next if f == '.' or f == '..'
+      next if File.directory?(f)
+      @list_array << f
+      $searchcount += 1
+    end #Dir
+
+
+  end #init
+
+
+  def pattern()
+    #search through array for PATTERN matches -> save to new array
+    #check for inversion flag -> subtract new array from old
+    #populate @list_hash with only Pattern matches
+
+    #select all files
+    #create hash from array
+    @list_hash = Hash[ *@list_array.collect { |v| [ v, v ] }.flatten ]
+  end #pattern
+
+
+  def upcase()
+    #populate @list_hash values with upcased keys
+  end #upcase
+
+  def downcase()
+    #populate @list_hash values with downcased keys
+  end #downcase
+
+  def substitute()
+    #populate @list_hash values with gsubbed keys
+  end #substitute
+
+  def rename_default(oldExt, newExt)
+    $renamecount = 0
+
+    #rename files @list_hash[k] -> @list_hash[v]
+
+    @list_array.each do |f|
+      if newExt == nil
+        newName = f.gsub(oldExt,'')
+      else
+        newName = f.gsub(oldExt,newExt)
+      end
+
+      if f != newName
+        $renamecount += 1
+        File.rename(f,newName)
+      end
+
+    end #@list_array.each
+
+  end #rename_default
+
+end #filelist
+
+
+def main(arguments, stdin)
+
+  bob = Filelist.new
+  bob.pattern
+  oldExt = arguments[0]
+  newExt = arguments[1]
+
+  if ARGV.length >= 3
+    puts 'Too many arguments'
+    puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
+  elsif oldExt == nil
+    puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
+  elsif  $dir == nil
+    puts  'Script failed. Could not automagically retrive current working directory.'
+  else
+    if newExt == nil
+      puts "deleting #{oldExt} from file names..."
+    else
+      puts "renaming #{oldExt} to #{newExt}"
+    end
+    bob.rename_default(oldExt,newExt)
+    print "#{$searchcount} files were searched.\n"
+    print "#{$renamecount} files were successfully renamed.\n"
+  end
+end
+
+
+
+# => if file is a directory recurse into it
+#    if File.directory?(fullPath)
+#      convertFromTo(fullPath, oldExt, newExt)
+#    else
+
+
+main(ARGV, STDIN)

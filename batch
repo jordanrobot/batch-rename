@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-@version = "1.4.18"
+@version = "1.4.80"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
@@ -11,104 +11,198 @@
 
 require 'rubygems'
 require 'ftools'
+require "Getopt/Declare"
+
+args = Getopt::Declare.new(<<'EOF')
+
+-i                      invert
+{ $invert_pattern = 1 }
+--invert                [ditto]
+
+-c                      ignore Pattern Case
+{ $ignore_case = 1 }
+--case                  [ditto]
+
+-u                      upcase
+{ $upcase = 1 }
+--uppercase                [ditto]
+
+-l                      lowercase
+{ $downcase = 1}
+--lowercase                [ditto]
+
+
+EOF
+
 
 class Filelist
   def initialize()
     $dir = `pwd`.chomp + "/"
-    @list_array = Array.new
-    $searchcount = 0
+    @orig_list_array = Array.new
 
-    #create an "all" array - skip directories
-    Dir.foreach($dir) do |f|    
+    #create an array of all the filenames - skip directories
+    Dir.foreach($dir) do |f|
       next if f == '.' or f == '..'
       next if File.directory?(f)
-      @list_array << f
-      $searchcount += 1
+      @orig_list_array << f
     end #Dir
+    @list_array = @orig_list_array
 
+    #Check to see if list_array is empty. - if so abort.
+    begin
+      if @orig_list_array.empty?
+        a = 1/0 #raise exception to abort program
+      end
+    rescue
+      puts "There are no files to rename. Batch is aborting.\n"
+      a = 1/0 #raise exception to abort program
+    ensure
+    end
+
+    $searchcount = @orig_list_array.length
 
   end #init
 
 
   def pattern()
-    #search through array for PATTERN matches -> save to new array
-    #check for inversion flag -> subtract new array from old
-    #populate @list_hash with only Pattern matches
+    @positive_array = Array.new
+    @negative_array = Array.new
+puts $ignore_case
+    #search for matching patterns - divy the results into two arrays
+    # Also deal with the ignore case switch here.
+    if $ignore_case == 1
+      @orig_list_array.each do |a|
+        #search for match to pattern
+        if a.downcase.include?($pattern.downcase)
+          @positive_array << a
+        else
+          @negative_array << a
+        end
+      end #@list_array.each
 
-    #select all files
+    else
+      @orig_list_array.each do |a|
+        #search for match to pattern
+        if a.include?($pattern)
+          @positive_array << a
+        else
+          @negative_array << a
+        end
+      end #@list_array.each
+    end #if $ignore_case
+
+    #Deal with inversion pattern here:
+    if $invert_pattern == 1
+      @list_array = @negative_array
+    else
+      @list_array = @positive_array
+    end
+
+  end #pattern
+
+  def create_hash()
     #create hash from array
     @list_hash = Hash[ *@list_array.collect { |v| [ v, v ] }.flatten ]
-  end #pattern
+  end
 
 
   def upcase()
+    up_hash = Hash.new
+    @list_hash.each_key do |key|
+      up_hash[key]=key.to_s.upcase
+    end
+
     #populate @list_hash values with upcased keys
+    puts "Changing file names to Uppercase."
+    @list_hash.merge!(up_hash)
   end #upcase
 
+
   def downcase()
+    down_hash = Hash.new
+    @list_hash.each_key do |key|
+      down_hash[key]=key.to_s.downcase
+    end
+
     #populate @list_hash values with downcased keys
+    @list_hash.merge!(down_hash)
+    puts "Changing file names to Lowercase."
   end #downcase
+
 
   def substitute()
     #populate @list_hash values with gsubbed keys
+    sub_hash = Hash.new
+
+    @list_hash.each_key do |key,value|
+      if $replacement == nil
+        puts "deleting #{$pattern} from file names..."
+        sub_hash[key] = key.gsub($pattern,'')
+      else
+        puts "renaming #{$pattern} to #{$replacement}"
+        sub_hash[key] = key.gsub($pattern,$replacement)
+      end #if
+    end #each.key
+
+    @list_hash.merge!(sub_hash)
   end #substitute
 
-  def rename_default(oldExt, newExt)
+
+  def rename_action()
     $renamecount = 0
 
-    #rename files @list_hash[k] -> @list_hash[v]
+    #get rid of empty values in the hash.
+    @list_hash.delete_if { |key, value| value == '' }
+    @list_hash.each_pair do |key, value|
 
-    @list_array.each do |f|
-      if newExt == nil
-        newName = f.gsub(oldExt,'')
-      else
-        newName = f.gsub(oldExt,newExt)
-      end
-
-      if f != newName
+      #check for duplicate key/value, & files - prevent clobbering
+      if key != value and not @orig_list_array.include?(value)
         $renamecount += 1
-        File.rename(f,newName)
+        File.rename(key, value)
       end
+    end #@list_hash.each
+  end #rename_action
 
-    end #@list_array.each
-
-  end #rename_default
 
 end #filelist
 
 
 def main(arguments, stdin)
 
+  $pattern = arguments[0]
+  $replacement = arguments[1]
+
   bob = Filelist.new
   bob.pattern
-  oldExt = arguments[0]
-  newExt = arguments[1]
+  bob.create_hash
+if $upcase == 1
+  then
+  bob.upcase
+elsif $downcase == 1
+  then
+  bob.downcase
+else
+  bob.substitute
+end
+
+  #  bob.downcase
+
 
   if ARGV.length >= 3
     puts 'Too many arguments'
     puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
-  elsif oldExt == nil
+  elsif $pattern == nil
     puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
   elsif  $dir == nil
     puts  'Script failed. Could not automagically retrive current working directory.'
   else
-    if newExt == nil
-      puts "deleting #{oldExt} from file names..."
-    else
-      puts "renaming #{oldExt} to #{newExt}"
-    end
-    bob.rename_default(oldExt,newExt)
-    print "#{$searchcount} files were searched.\n"
-    print "#{$renamecount} files were successfully renamed.\n"
+    bob.rename_action
+    print "#{$renamecount} of #{$searchcount} files were affected.\n"
   end
 end
 
 
-
-# => if file is a directory recurse into it
-#    if File.directory?(fullPath)
-#      convertFromTo(fullPath, oldExt, newExt)
-#    else
-
-
+#begin
 main(ARGV, STDIN)
+#rescue
+#end

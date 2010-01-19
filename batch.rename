@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-@version = "1.3.14"
+@version = "1.3.18"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
@@ -11,14 +11,142 @@
 # --- TODO ---
 
 ### Error Checking
-# check if target filname already exists
+# => check if target filname already exists
   # error on name collisions or continue and report after?
-# check permissions
+# => check permissions
   # abort right away if permissions are lacking
-# is file locked?
-# error catching
+# => is file locked?
+# => error catching
 
-# lock files during name changes?  nesessary?
+# => lock files during name changes?  nesessary?
+
+
+
+
+
+### Selecting Files (PATTERN stuff) ###
+
+# => Regex support?
+# => Wildcard & globbing support!
+
+### All option; -a --all
+# => disregard PATTERN matching; do these things to all files.
+
+### Inclusion Mode; -I --include
+# => perform operations on the whole filename found by a PATTERN match
+# => implied with propercase or sentencecase
+
+### Inversion Mode?; -i --invert
+# => Invert results from PATTERN match
+# => instead of: "affect only matches"; acts like: "affect only not matches". 
+
+### Ignore PATTERN case; -
+
+### File Extension Support? (.pdf, .xls, ...); -x --extensions
+# => Add supplied extensions onto files that do not have extensions
+# => Change all extensions
+# => Delete all extensions
+# => Delete extensions that match PATTERN
+# => Preserve extensions that match PATTERN
+# => PATTERN + Gsub! only extensions <- not needed with wildcards?
+
+  # => x - restrict changes to only extensions
+  # => -ix - exclude extensions from changes; preserve extensions
+
+
+### Meta ###
+
+### Version option; -v --version
+# => print program version
+
+### Help; -h --help
+# => display rudimentary help
+
+
+### Reporting and data ###
+
+### Confirmation; default behavior
+# => report proposed changes and request confirmation of intent
+# => require a full yes/no, not y/n?
+
+### Step confirmation; -S --step
+# => Steps through each file and requests y/n confirmation
+
+### Force; -f --force
+# => operate renames without user confirmation
+
+### Print; -p --print
+# => print a formated list of renamed files after execution
+# => number of files changed
+# => errors encountered
+# => how does this work with the confirmation mode?
+
+### Test; -t --test
+# => dry run w/ print
+# => does not change files
+
+### Verbose Mode; -V --verbose
+# => show renames and progress in situ
+
+
+
+
+### Actions ###
+
+### Default Mode; Gsub based
+# => batch.rename PATTERN replacementtext
+
+### Uppercase; -U --uppercase
+### Lowercase; -l --lowercase
+### Sentencecase; -s --sentence
+
+### Append; -A --append
+# => Append ___ to files
+# => Append with index?
+# => auto number based on date/time
+# => auto number from range
+
+### Prepend; -P --prepend
+# => Prepend ___ to files
+# => prepend with index?
+# => auto number based on date/time
+# => auto number from range
+
+### Trim;
+# => trim first x
+# => trim last x
+
+
+### Recursive Rename; -r --recurse
+# => default to a confirmation to prevent chaos?
+
+
+### Related features and questions: ###
+
+### Directory Handling?
+# => -D --directories (rename (only or additionally) directories as well?)
+# => how does the current script behave with directories?
+
+### Target renames into another directory?
+# => batch.rename --target ~/bob/albums PATTERN replacementtext
+
+# make compatible with windows?
+
+
+###############
+### Process ###
+###############
+
+# => Parse Args
+# => Get files -> get list of files
+# => Perform Actions
+
+#Object -> start with a hash of all file names in directory
+
+
+###############################
+### Rename Engine Structure ###
+###############################
 
 
 ### Mode Structure
@@ -26,75 +154,12 @@
 # => Or make the Original PATTERN + GSUB mode heliocentric, with all other
   # functionality requiring options?
 
+# => modular
+# => enable features & engine differences with flags?
+# => write seperate cases depending on options?
+  # => not very flexible, harder to use seperate options together
+# => seperate cases and modifier options (with flags?)
 
-### PATTERN stuff
-# => Regex support?
-# => Wildcard support?
-
-
-### File Extension Support? (.pdf, .xls, ...)
-# => e.g. add specified extensions onto files that do not have extensions
-# => change all extensions
-# => delete extensions
-# => PATTERN + Gsub! only extensions <- not needed with wildcards?
-
-# => x - restrict changes to only extensions
-# => X - exclude extensions from changes; preserve extensions
-
-
-### Confirmation mode
-# => report proposed changes and request confirmation of intent
-# => require a full yes/no, not y/n
-
-### Options
-# => -a  All option - do these things to all files, disregard pattern matching
-# => -r --recurse (recursive rename)
-  # => default to a confirmation to prevent chaos?
-# => -d --directories (rename (only or additionally) directories as well?)
-# => -p --print (print changed files after changing) - seperate from confirmation mode
-# => -V --verbose (show renames in situ)
-# => -v --print program version
-# => -t --test (dry run w/ report) - confirmation mode without proceeding
-# => --uppercase
-# => --lowercase
-# => --propercase
-# => --sentencecase
-
-# => add to front of all files
-
-# => rename w/ appended numbers
-#   => based on date & time?
-# => rename based on index?
-# => from range?
-# => extensions
-#   => append
-#   => replace extensions
-#   => swap
-# => trim-first (number of characters forward or backwards)
-# => trim-last (number of characters forward or backwards)
-
-# => --date
-# => confirm mode?
-#
-# save often used renames as 'profiles'?
-# use regular expressions
-# input case sensitivity on/off
-# make compatible with windows?
-# replace several sets of text at once
-
-#
-# => Process???
-# => Parse Args
-# => Get files -> get list of files
-# => Rename Engine
-#   => modular
-#   => enable features & engine differences with flags?
-#   => write seperate cases depending on options?
-    # => not very flexible, harder to use seperate options together
-#   => seperate cases and modifier options (with flags?)
-#
-#
-#
 
 require 'rubygems'
 require 'ftools'

@@ -2,7 +2,7 @@
 # --- TODO ---
 
 ### Error Checking
-# => check if target filname already exists
+# => check if target filename already exists
   # error on name collisions or continue and report after?
 # => check permissions
   # abort right away if permissions are lacking

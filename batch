@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.4.159"
+$version = "1.5.229"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
@@ -23,6 +23,10 @@ args = Getopt::Declare.new(<<'EOF')
 { $ignore_case = 1 }
 --case              [ditto]
 
+-D                  DEBUG
+{ $debug = 1 }
+--debug             [ditto]
+
 -u                  upcase [excludes: -l --lowercase]
 { $upcase = 1 }
 --uppercase         [ditto]
@@ -31,7 +35,7 @@ args = Getopt::Declare.new(<<'EOF')
 { $downcase = 1}
 --lowercase         [ditto]
 
--a                  all [requires: -u || --uppercase || -l || --lowercase]
+-a                  all
 { $apply_to_all = 1}
 --all               [ditto]
 
@@ -51,9 +55,13 @@ args = Getopt::Declare.new(<<'EOF')
 { $help = 1 }
 --help              [ditto]
 
+-t <value:i>        Trim
+{ $trim = value }
+--trim              [ditto]
 
 EOF
 
+puts $debug ? "==== DEBUG MODE ON ====\n" : ""
 
 class Filelist
 
@@ -61,6 +69,8 @@ class Filelist
 
     @dir = `pwd`.chomp + "/"
     @orig_list_array = Array.new
+
+    puts $debug ? "==== initialization() ====\n" : ""
 
 
     #check for existance of dir - abort if not
@@ -94,8 +104,10 @@ class Filelist
     @searchcount = @orig_list_array.length
 
   end #init
-    
+
   def pattern()
+
+    puts $debug ? "==== pattern() ====\n" : ""
     
     # Error check - abort if no pattern!
     begin
@@ -110,7 +122,6 @@ class Filelist
     
     positive_array = Array.new
     negative_array = Array.new
-
 
     #search for matching patterns - divy the results into two arrays
     # Also deal with the ignore case switch here.
@@ -147,13 +158,18 @@ class Filelist
 
 
   def create_hash()
+    p $debug ? "==== create_hash() ====\n" : "\b"
+
     #create hash from array
     @list_hash = Hash[ *@list_array.collect { |v| [ v, v ] }.flatten ]
   end
 
 
   def upcase()
+    p $debug ? "==== upcase() ====\n" : ""
 
+    create_hash()
+    
     up_hash = Hash.new
 
     @list_hash.each_key do |key|
@@ -167,6 +183,9 @@ class Filelist
 
 
   def downcase()
+    p $debug ? "==== downcase() ====\n" : ""
+
+    create_hash()
 
     down_hash = Hash.new
 
@@ -180,8 +199,53 @@ class Filelist
   end #downcase
 
 
-  def substitute()
+  def trim()
+  
+    p $debug ? "==== trim() ====\n" : ""
 
+    create_hash()
+
+    sub_hash = Hash.new
+
+    if $trim == 0
+      then
+      puts "Trimming 0 characters does you no good!"
+      print_usage
+      exit
+      
+    #negative trim number
+    elsif $trim <= 0
+      @list_hash.each_key do |key|
+
+          #make sure trim isn't too big
+          if (-1 * $trim) < key.length
+          sub_hash[key] = key.slice(($trim * -1)..key.length)
+
+          end
+        end        
+
+    #positive trim number
+    elsif $trim >= 0
+      @list_hash.each_key do |key|
+    
+        #make sure trim isn't too big
+        if $trim < key.length
+          sub_hash[key] = key.slice(0..(key.length - $trim - 1))
+
+        end #if
+      end #each
+    end #if
+
+    @list_hash = sub_hash
+  
+  end #trim
+
+
+  def substitute()
+    p $debug ? "==== substitute() ====\n" : ""
+
+    create_hash()
+    
     #error checking for errant options
     # cannot use -all option with sub.
     begin
@@ -218,6 +282,8 @@ class Filelist
 
 
   def rename_action()
+    puts $debug ? "==== rename_action() ====\n" : ""
+
     @renamecount = 0
 
     #get rid of empty values in the hash.
@@ -248,7 +314,7 @@ end #filelist
 
 
 def print_usage()
-  puts  'Usage: batch.rename [-acilquvV] [PATTERN] [REPLACEMENT]'
+  puts  'Usage: batch.rename [-acDilqtuvV] [PATTERN] [REPLACEMENT]'
 end
 
 
@@ -265,6 +331,7 @@ end
 
 
 def main()
+  puts $debug ? "==== main() ====\n" : ""
 
   print_version     
   $pattern = ARGV[0]
@@ -277,7 +344,7 @@ def main()
     bob.pattern
   end
 
-  bob.create_hash
+ # bob.create_hash
 
   if $upcase == 1
     then
@@ -285,6 +352,9 @@ def main()
   elsif $downcase == 1
     then
     bob.downcase
+  elsif $trim
+    then
+    bob.trim
   else
     bob.substitute
   end

@@ -3,228 +3,403 @@
 ########################
 ###   Batch Rename   ###
 ########################
-@version = "1.3.18"
+$version = "1.5.243"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
 
-# --- TODO ---
-
-### Error Checking
-# => check if target filname already exists
-  # error on name collisions or continue and report after?
-# => check permissions
-  # abort right away if permissions are lacking
-# => is file locked?
-# => error catching
-
-# => lock files during name changes?  nesessary?
-
-
-
-
-
-### Selecting Files (PATTERN stuff) ###
-
-# => Regex support?
-# => Wildcard & globbing support!
-
-### All option; -a --all
-# => disregard PATTERN matching; do these things to all files.
-
-### Inclusion Mode; -I --include
-# => perform operations on the whole filename found by a PATTERN match
-# => implied with propercase or sentencecase
-
-### Inversion Mode?; -i --invert
-# => Invert results from PATTERN match
-# => instead of: "affect only matches"; acts like: "affect only not matches". 
-
-### Ignore PATTERN case; -
-
-### File Extension Support? (.pdf, .xls, ...); -x --extensions
-# => Add supplied extensions onto files that do not have extensions
-# => Change all extensions
-# => Delete all extensions
-# => Delete extensions that match PATTERN
-# => Preserve extensions that match PATTERN
-# => PATTERN + Gsub! only extensions <- not needed with wildcards?
-
-  # => x - restrict changes to only extensions
-  # => -ix - exclude extensions from changes; preserve extensions
-
-
-### Meta ###
-
-### Version option; -v --version
-# => print program version
-
-### Help; -h --help
-# => display rudimentary help
-
-
-### Reporting and data ###
-
-### Confirmation; default behavior
-# => report proposed changes and request confirmation of intent
-# => require a full yes/no, not y/n?
-
-### Step confirmation; -S --step
-# => Steps through each file and requests y/n confirmation
-
-### Force; -f --force
-# => operate renames without user confirmation
-
-### Print; -p --print
-# => print a formated list of renamed files after execution
-# => number of files changed
-# => errors encountered
-# => how does this work with the confirmation mode?
-
-### Test; -t --test
-# => dry run w/ print
-# => does not change files
-
-### Verbose Mode; -V --verbose
-# => show renames and progress in situ
-
-
-
-
-### Actions ###
-
-### Default Mode; Gsub based
-# => batch.rename PATTERN replacementtext
-
-### Uppercase; -U --uppercase
-### Lowercase; -l --lowercase
-### Sentencecase; -s --sentence
-
-### Append; -A --append
-# => Append ___ to files
-# => Append with index?
-# => auto number based on date/time
-# => auto number from range
-
-### Prepend; -P --prepend
-# => Prepend ___ to files
-# => prepend with index?
-# => auto number based on date/time
-# => auto number from range
-
-### Trim;
-# => trim first x
-# => trim last x
-
-
-### Recursive Rename; -r --recurse
-# => default to a confirmation to prevent chaos?
-
-
-### Related features and questions: ###
-
-### Directory Handling?
-# => -D --directories (rename (only or additionally) directories as well?)
-# => how does the current script behave with directories?
-
-### Target renames into another directory?
-# => batch.rename --target ~/bob/albums PATTERN replacementtext
-
-# make compatible with windows?
-
-
-###############
-### Process ###
-###############
-
-# => Parse Args
-# => Get files -> get list of files
-# => Perform Actions
-
-#Object -> start with a hash of all file names in directory
-
-
-###############################
-### Rename Engine Structure ###
-###############################
-
-
-### Mode Structure
-# => Multiple modes? Original PATTERN + GSUB not the heart of the script?
-# => Or make the Original PATTERN + GSUB mode heliocentric, with all other
-  # functionality requiring options?
-
-# => modular
-# => enable features & engine differences with flags?
-# => write seperate cases depending on options?
-  # => not very flexible, harder to use seperate options together
-# => seperate cases and modifier options (with flags?)
-
 
 require 'rubygems'
 require 'ftools'
+require "Getopt/Declare"
 
-def main(arguments, stdin)
+args = Getopt::Declare.new(<<'EOF')
 
-  @dir = `pwd`.chomp + "/"
+-i                  invert [requires: (-u || --uppercase) || (-l || --lowercase)] [excludes: -a --all]
+{ $invert_pattern = 1 }
+--invert            [ditto]
 
-  oldExt = arguments[0]
-  newExt = arguments[1]
-  @searchcount = 0
-  @renamecount = 0
+-c                  ignore Pattern Case
+{ $ignore_case = 1 }
+--case              [ditto]
+
+-D                  DEBUG
+{ $debug = 1 }
+--debug             [ditto]
+
+-u                  upcase [excludes: -l --lowercase]
+{ $upcase = 1 }
+--uppercase         [ditto]
+
+-l                  lowercase [excludes: -u --uppercase]
+{ $downcase = 1}
+--lowercase         [ditto]
+
+-a                  all
+{ $apply_to_all = 1}
+--all               [ditto]
+
+-v                  Version
+{ $print_version = 1 }
+--version           [ditto]
+
+-V                  Verbose [excludes: -q --quiet]
+{ $verbose = 1 }
+--verbose           [ditto]
+
+-q                  Quiet [excludes: -V --verbose]
+{ $quiet = 1 }
+--quiet             [ditto]
+
+-h                  Help
+{ $help = 1 }
+--help              [ditto]
+
+-t <value:i>        Trim
+{ $trim = value }
+--trim              [ditto]
+
+EOF
+
+puts $debug ? "==== DEBUG MODE ON ====\n" : ""
+
+class Filelist
+
+  def initialize()
+
+    @dir = `pwd`.chomp + "/"
+    @orig_list_array = Array.new
+
+    puts $debug ? "==== initialization() ====\n" : ""
 
 
-  if ARGV.length >= 3
-    puts 'Too many arguments'
-    puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
-  elsif oldExt == nil
-    puts 'Usage: batch.rename PATTERN [REPLACEMENT PATTERN]'
-  elsif  @dir == nil
-    puts  'Script failed. Could not automagically retrive current working directory.'
-  else
-    if newExt == nil
-      puts "deleting #{oldExt} from file names..."
-    else
-      puts "renaming #{oldExt} to #{newExt}"
+    #check for existance of dir - abort if not
+    begin
+      @dir == nil ? a = 1/0 : nil
+    rescue
+      puts  'Script failed. Could not automagically retrive current working directory.'
+      exit
+    ensure
     end
-    convertFromTo(@dir,oldExt,newExt)
-    print "#{@searchcount} files were searched.\n"
-    print "#{@renamecount} files were successfully renamed.\n"
+
+    #create an array of all the filenames - skip directories
+    Dir.foreach(@dir) do |f|
+      next if f == '.' or f == '..'
+      next if File.directory?(f)
+      @orig_list_array << f
+    end #Dir
+    @list_array = @orig_list_array
+
+    #Check to see if list_array is empty. - if so abort.
+    begin
+      if @orig_list_array.empty?
+        a = 1/0 #raise exception to abort program
+      end
+    rescue
+      puts "There are no files to rename. Batch is aborting.\n"
+      a = 1/0 #raise exception to abort program
+    ensure
+    end
+
+    @searchcount = @orig_list_array.length
+
+  end #init
+
+  def pattern()
+
+    puts $debug ? "==== pattern() ====\n" : ""
+    
+    # Error check - abort if no pattern!
+    begin
+      if $pattern == nil
+        a = 1/0 #raise exception to abort program
+      end
+    rescue
+      print_usage
+      exit #raise exception to abort program
+    ensure
+    end
+    
+    positive_array = Array.new
+    negative_array = Array.new
+
+    #search for matching patterns - divy the results into two arrays
+    # Also deal with the ignore case switch here.
+    if $ignore_case == 1
+      @orig_list_array.each do |a|
+        #search for match to pattern
+        if a.downcase.include?($pattern.downcase)
+          positive_array << a
+        else
+          negative_array << a
+        end
+      end #@list_array.each
+
+    else
+      @orig_list_array.each do |a|
+        #search for match to pattern
+        if a.include?($pattern)
+          positive_array << a
+        else
+          negative_array << a
+        end
+      end #@list_array.each
+    end #if $ignore_case
+
+
+    #Deal with inversion pattern here:
+    if $invert_pattern == 1
+      @list_array = negative_array
+    else
+      @list_array = positive_array
+    end
+
+  end #pattern
+
+
+  def create_hash()
+    p $debug ? "==== create_hash() ====\n" : "\b"
+
+    #create hash from array
+    @list_hash = Hash[ *@list_array.collect { |v| [ v, v ] }.flatten ]
   end
+
+
+  def upcase()
+    p $debug ? "==== upcase() ====\n" : ""
+
+    create_hash()
+    
+    up_hash = Hash.new
+
+    @list_hash.each_key do |key|
+      up_hash[key]=key.to_s.upcase
+    end
+
+    print !$quiet ? "Changing file names to Uppercase.\n" : nil
+
+    @list_hash.merge!(up_hash)
+  end #upcase
+
+
+  def downcase()
+    p $debug ? "==== downcase() ====\n" : ""
+
+    create_hash()
+
+    down_hash = Hash.new
+
+    @list_hash.each_key do |key|
+      down_hash[key]=key.to_s.downcase
+    end
+
+    print !$quiet ? "Changing file names to Lowercase.\n" : nil
+
+    @list_hash.merge!(down_hash)
+  end #downcase
+
+
+  def trim()
+  
+    p $debug ? "==== trim() ====\n" : ""
+
+    create_hash()
+
+    sub_hash = Hash.new
+
+    if $trim == 0
+      then
+      puts "Trimming 0 characters does you no good!"
+      print_usage
+      exit
+      
+    #negative trim number
+    elsif $trim <= 0
+      @list_hash.each_key do |key|
+
+          #make sure trim isn't too big
+          if (-1 * $trim) < key.length
+          sub_hash[key] = key.slice(($trim * -1)..key.length)
+
+          end
+        end        
+
+    #positive trim number
+    elsif $trim >= 0
+      @list_hash.each_key do |key|
+    
+        #make sure trim isn't too big
+        if $trim < key.length
+          sub_hash[key] = key.slice(0..(key.length - $trim - 1))
+
+        end #if
+      end #each
+    end #if
+
+    @list_hash = sub_hash
+  
+  end #trim
+
+
+  def substitute()
+    p $debug ? "==== substitute() ====\n" : ""
+
+    create_hash()
+    
+    #error checking for errant options
+    # cannot use -all option with sub.
+    begin
+      $apply_to_all ? a = 1/0 : nil
+    rescue
+      puts  'Ignoring the all option while performing a PATTERN substitution.'
+    ensure
+    end
+
+    #error checking for errant options
+    # cannot use -invert option with sub.
+    begin
+      $invert_pattern ? a = 1/0 : nil
+    rescue
+      puts  'Script aborted, you cannot apply a PATTERN substitution with the invert option.'
+      exit #raise exception to abort program
+    ensure
+    end
+
+    #populate @list_hash values with gsubbed keys
+    sub_hash = Hash.new
+
+    @list_hash.each_key do |key,value|
+      if $ignore_case == 1
+        sub_hash[key] = key.gsub(/#{$pattern}/i,$replacement)
+      else
+        sub_hash[key] = key.gsub($pattern,$replacement)
+      end #if
+    end #each.key
+
+    @list_hash.merge!(sub_hash)
+
+  end #substitute
+
+
+  def rename_action()
+    puts $debug ? "==== rename_action() ====\n" : ""
+
+    @renamecount = 0
+
+    #get rid of empty values in the hash.
+    @list_hash.delete_if { |key, value| value == '' }
+    @list_hash.each_pair do |key, value|
+
+      #check for duplicate key/value, & files - prevent clobbering
+      if key != value and not @orig_list_array.include?(value)
+        @renamecount += 1
+
+        File.rename(key, value)
+
+        #announce renames
+        print $verbose == 1? "#{key}  >>>   #{value}\n" : ""
+        
+      else
+
+        #announce clobbering
+        print $verbose == 1? "#{key} will clobber #{value}; rename aborted.\n" : ""
+
+      end #anti-clobber if
+    end #@list_hash.each
+
+  print $quiet != 1? "#{@renamecount} of #{@searchcount} files were affected.\n" : ""
+  
+  end #rename_action
+end #filelist
+
+
+def print_usage()
+  puts  'Usage: batch.rename [-acDilqtuvV] [PATTERN] [REPLACEMENT]'
 end
 
 
-def convertFromTo(dir, oldExt, newExt)
+def print_version()
+  puts "Batch Rename v. #{$version}\n"
+end
 
 
-  Dir.foreach(dir) do |f|
+def print_help()
+  
+  print_version()
+  print_usage()
+  puts "--------------------------------"
+  puts "Batch.rename is a simple substituation based batch file renamer with several additional options."
+  puts ""
+  puts "-i --invert        invert results from PATTERN"
+  puts "-c --case          ignore case of PATTERN"
+  puts "-D --debug         print debug dialogues"
+  puts "-u --upperercase"
+  puts "-l --lowercase"
+  puts "-a --all           disregard PATTERN, include all files"
+  puts "-v --version       print program version"
+  puts "-V --verbose       verbose output"
+  puts "-q --quiet         quiet output"
+  puts "-h --help          print this help output"
+  puts "-t # --trim #      trim (+#) characters from end or (-#) characters from beginning.  Will match patterns."
+  puts ""
+  puts "--index            planned, not implimented"
+  puts "-X                 planned, only affect extensions"
+  puts "-x                 planned, preserve extensions"
+  puts "--propercase       planned"
+  puts "                   planned, add extension to files lacking them"
+  puts "-A --append        planned, append to filename"
+  puts "-P --prepend       planned, prepend to filename"
+  puts "-s --step          planned, step confirmation of each file rename"
+  puts "-c --confirmation  planned, confirm results before proceeding with rename"
+  puts "-t --test          planned, dry run of rename, with printed results"
+  puts "-r --recursive     planned, recursive rename? - maybe a baaaaad idea"
 
-    #skip file if it is . or .. or directory
-    next if f == '.' or f == '..'
-    next if File.directory?(f)
-    @searchcount += 1
+end
 
-    # fullPath = fullPath.gsub(' ','\ ')
 
-# => if file is a directory recurse into it
-#    if File.directory?(fullPath)
-#      convertFromTo(fullPath, oldExt, newExt)
-#    else
+def main()
+#  puts $debug ? "==== main() ====\n" : ""
+     
+  $pattern = ARGV[0]
+  $replacement = ARGV[1]
+  $replacement ||= ''
 
-   if newExt == nil
-     newName = f.gsub(oldExt,'')
-   else
-     newName = f.gsub(oldExt,newExt)
-   end
+  bob = Filelist.new
 
-    if f != newName
-    @renamecount += 1
-      
-# =>  list file option
-#      puts f + '  ->  ' + newName
-      File.rename(f,newName)
-    end
-  end #do
-end #def
+  if $help == 1
+    then
+    print_help()
+    exit
+  elsif $print_version == 1
+    then
+    print_version()
+    exit
+  end
 
-main(ARGV, STDIN)
+  unless $apply_to_all == 1
+    bob.pattern
+  end
+
+ # bob.create_hash
+
+  if $upcase == 1
+    then
+    bob.upcase
+  elsif $downcase == 1
+    then
+    bob.downcase
+  elsif $trim
+    then
+    bob.trim
+  else
+    bob.substitute
+  end
+
+  bob.rename_action
+end #main
+
+
+#begin
+main()
+#rescue
+#end

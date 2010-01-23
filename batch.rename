@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.5.25"
+$version = "1.5.27"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
@@ -11,69 +11,70 @@ $version = "1.5.25"
 
 require 'rubygems'
 require 'ftools'
-require "Getopt/Declare"
+require 'Getopt/Declare'
+require 'ostruct'
+
+    $op = OpenStruct.new
+
 
 args = Getopt::Declare.new(<<'EOF')
 
 -i                  invert [requires: (-u || --uppercase) || (-l || --lowercase)] [excludes: -a --all]
-{ $invert_pattern = 1 }
+{ $op.invert = 1 }
 --invert            [ditto]
 
 -c                  ignore Pattern Case
-{ $ignore_case = 1 }
+{ $op.ignore_case = 1 }
 --case              [ditto]
 
 -D                  DEBUG
-{ $debug = 1 }
+{ $op.debug = 1 }
 --debug             [ditto]
 
 -u                  upcase [excludes: -l --lowercase]
-{ $upcase = 1 }
+{ $op.upcase = 1 }
 --uppercase         [ditto]
 
 -l                  lowercase [excludes: -u --uppercase]
-{ $downcase = 1}
+{ $op.downcase = 1}
 --lowercase         [ditto]
 
 -a                  all
-{ $apply_to_all = 1}
+{ $op.all = 1}
 --all               [ditto]
 
 -v                  Version
-{ $print_version = 1 }
+{ $op.version = 1 }
 --version           [ditto]
 
 -V                  Verbose [excludes: -q --quiet]
-{ $verbose = 1 }
+{ $op.verbose = 1 }
 --verbose           [ditto]
 
 -q                  Quiet [excludes: -V --verbose]
-{ $quiet = 1 }
+{ $op.quiet = 1 }
 --quiet             [ditto]
 
 -h                  Help
-{ $help = 1 }
+{ $op.help = 1 }
 --help              [ditto]
 
 -t <value:i>        Trim
-{ $trim = value }
+{ $op.trim = value }
 --trim              [ditto]
 
 EOF
 
-puts $debug ? "==== DEBUG MODE ON ====\n" : ""
+puts $op.debug ? "==== DEBUG MODE ON ====\n" : ""
 
 class Filelist
 
   def initialize()
 
-
-    raise IndexError, "Name too big"   
-
     @dir = `pwd`.chomp + "/"
     @orig_list_array = Array.new
 
-    puts $debug ? "==== initialization() ====\n" : ""
+    puts $op.debug ? "==== initialization() ====\n" : ""
 
 
     #check for existance of dir - abort if not
@@ -110,7 +111,7 @@ class Filelist
 
   def pattern()
 
-    puts $debug ? "==== pattern() ====\n" : ""
+    puts $op.debug ? "==== pattern() ====\n" : ""
     
     # Error check - abort if no pattern!
     begin
@@ -128,7 +129,7 @@ class Filelist
 
     #search for matching patterns - divy the results into two arrays
     # Also deal with the ignore case switch here.
-    if $ignore_case == 1
+    if $op.ignore_case == 1
       @orig_list_array.each do |a|
         #search for match to pattern
         if a.downcase.include?($pattern.downcase)
@@ -147,11 +148,11 @@ class Filelist
           negative_array << a
         end
       end #@list_array.each
-    end #if $ignore_case
+    end #if $op.ignore_case
 
 
     #Deal with inversion pattern here:
-    if $invert_pattern == 1
+    if $op.invert == 1
       @list_array = negative_array
     else
       @list_array = positive_array
@@ -161,7 +162,7 @@ class Filelist
 
 
   def create_hash()
-    p $debug ? "==== create_hash() ====\n" : "\b"
+    p $op.debug ? "==== create_hash() ====\n" : "\b"
 
     #create hash from array
     @list_hash = Hash[ *@list_array.collect { |v| [ v, v ] }.flatten ]
@@ -169,7 +170,7 @@ class Filelist
 
 
   def upcase()
-    p $debug ? "==== upcase() ====\n" : ""
+    p $op.debug ? "==== upcase() ====\n" : ""
 
     create_hash()
     
@@ -179,14 +180,14 @@ class Filelist
       up_hash[key]=key.to_s.upcase
     end
 
-    print !$quiet ? "Changing file names to Uppercase.\n" : nil
+    print !$op.quiet ? "Changing file names to Uppercase.\n" : nil
 
     @list_hash.merge!(up_hash)
   end #upcase
 
 
   def downcase()
-    p $debug ? "==== downcase() ====\n" : ""
+    p $op.debug ? "==== downcase() ====\n" : ""
 
     create_hash()
 
@@ -196,7 +197,7 @@ class Filelist
       down_hash[key]=key.to_s.downcase
     end
 
-    print !$quiet ? "Changing file names to Lowercase.\n" : nil
+    print !$op.quiet ? "Changing file names to Lowercase.\n" : nil
 
     @list_hash.merge!(down_hash)
   end #downcase
@@ -204,36 +205,36 @@ class Filelist
 
   def trim()
   
-    p $debug ? "==== trim() ====\n" : ""
+    p $op.debug ? "==== trim() ====\n" : ""
 
     create_hash()
 
     sub_hash = Hash.new
 
-    if $trim == 0
+    if $op.trim == 0
       then
       puts "Trimming 0 characters does you no good!"
       print_usage
       exit
       
     #negative trim number
-    elsif $trim <= 0
+    elsif $op.trim <= 0
       @list_hash.each_key do |key|
 
           #make sure trim isn't too big
-          if (-1 * $trim) < key.length
-          sub_hash[key] = key.slice(($trim * -1)..key.length)
+          if (-1 * $op.trim) < key.length
+          sub_hash[key] = key.slice(($op.trim * -1)..key.length)
 
           end
         end        
 
     #positive trim number
-    elsif $trim >= 0
+    elsif $op.trim >= 0
       @list_hash.each_key do |key|
     
         #make sure trim isn't too big
-        if $trim < key.length
-          sub_hash[key] = key.slice(0..(key.length - $trim - 1))
+        if $op.trim < key.length
+          sub_hash[key] = key.slice(0..(key.length - $op.trim - 1))
 
         end #if
       end #each
@@ -245,14 +246,14 @@ class Filelist
 
 
   def substitute()
-    p $debug ? "==== substitute() ====\n" : ""
+    p $op.debug ? "==== substitute() ====\n" : ""
 
     create_hash()
     
     #error checking for errant options
     # cannot use -all option with sub.
     begin
-      $apply_to_all ? a = 1/0 : nil
+      $op.all ? a = 1/0 : nil
     rescue
       puts  'Ignoring the all option while performing a PATTERN substitution.'
     ensure
@@ -261,7 +262,7 @@ class Filelist
     #error checking for errant options
     # cannot use -invert option with sub.
     begin
-      $invert_pattern ? a = 1/0 : nil
+      $op.invert ? a = 1/0 : nil
     rescue
       puts  'Script aborted, you cannot apply a PATTERN substitution with the invert option.'
       exit #raise exception to abort program
@@ -272,7 +273,7 @@ class Filelist
     sub_hash = Hash.new
 
     @list_hash.each_key do |key,value|
-      if $ignore_case == 1
+      if $op.ignore_case == 1
         sub_hash[key] = key.gsub(/#{$pattern}/i,$replacement)
       else
         sub_hash[key] = key.gsub($pattern,$replacement)
@@ -285,7 +286,7 @@ class Filelist
 
 
   def rename_action()
-    puts $debug ? "==== rename_action() ====\n" : ""
+    puts $op.debug ? "==== rename_action() ====\n" : ""
 
     @renamecount = 0
 
@@ -300,17 +301,17 @@ class Filelist
         File.rename(key, value)
 
         #announce renames
-        print $verbose == 1? "#{key}  >>>   #{value}\n" : ""
+        print $op.verbose == 1? "#{key}  >>>   #{value}\n" : ""
         
       else
 
         #announce clobbering
-        print $verbose == 1? "#{key} will clobber #{value}; rename aborted.\n" : ""
+        print $op.verbose == 1? "#{key} will clobber #{value}; rename aborted.\n" : ""
 
       end #anti-clobber if
     end #@list_hash.each
 
-  print $quiet != 1? "#{@renamecount} of #{@searchcount} files were affected.\n" : ""
+  print $op.quiet != 1? "#{@renamecount} of #{@searchcount} files were affected.\n" : ""
   
   end #rename_action
 end #filelist
@@ -363,7 +364,7 @@ end
 
 
 def main()
-#  puts $debug ? "==== main() ====\n" : ""
+#  puts $op.debug ? "==== main() ====\n" : ""
      
   $pattern = ARGV[0]
   $replacement = ARGV[1]
@@ -371,29 +372,29 @@ def main()
 
   bob = Filelist.new
 
-  if $help == 1
+  if $op.help == 1
     then
     print_help()
     exit
-  elsif $print_version == 1
+  elsif $op.version == 1
     then
     print_version()
     exit
   end
 
-  unless $apply_to_all == 1
+  unless $op.all == 1
     bob.pattern
   end
 
  # bob.create_hash
 
-  if $upcase == 1
+  if $op.upcase == 1
     then
     bob.upcase
-  elsif $downcase == 1
+  elsif $op.downcase == 1
     then
     bob.downcase
-  elsif $trim
+  elsif $op.trim
     then
     bob.trim
   else

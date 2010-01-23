@@ -1,6 +1,11 @@
 
 # --- TODO ---
 
+# --- Bugs ---
+
+trim will trim files to 0 characters long - fix this
+
+
 ### Error Checking
 # => check if target filename already exists
   # error on name collisions or continue and report after?

@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.5.27"
+$version = "1.5.276"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
@@ -14,8 +14,7 @@ require 'ftools'
 require 'Getopt/Declare'
 require 'ostruct'
 
-    $op = OpenStruct.new
-
+$op = OpenStruct.new
 
 args = Getopt::Declare.new(<<'EOF')
 
@@ -60,26 +59,23 @@ args = Getopt::Declare.new(<<'EOF')
 --help              [ditto]
 
 -t <value:i>        Trim
-{ $op.trim = value }
+{ $op.trim = value ; $op.trimt = 1}
 --trim              [ditto]
 
 EOF
 
-puts $op.debug ? "==== DEBUG MODE ON ====\n" : ""
 
 class Filelist
 
   def initialize()
+  debug("initializing Filelist")
 
     @dir = `pwd`.chomp + "/"
     @orig_list_array = Array.new
 
-    puts $op.debug ? "==== initialization() ====\n" : ""
-
-
     #check for existance of dir - abort if not
     begin
-      @dir == nil ? a = 1/0 : nil
+      @dir == nil ? a = 1/0 : {}
     rescue
       puts  'Script failed. Could not automagically retrive current working directory.'
       exit
@@ -109,18 +105,14 @@ class Filelist
 
   end #init
 
-  def pattern()
-
-    puts $op.debug ? "==== pattern() ====\n" : ""
+  def pattern
+  debug("pattern")
     
     # Error check - abort if no pattern!
     begin
-      if $pattern == nil
-        a = 1/0 #raise exception to abort program
-      end
+      $pattern == nil ? a = 1/0 : {}
     rescue
-      print_usage
-      exit #raise exception to abort program
+      print_usage{exit}
     ensure
     end
     
@@ -161,18 +153,18 @@ class Filelist
   end #pattern
 
 
-  def create_hash()
-    p $op.debug ? "==== create_hash() ====\n" : "\b"
-
+  def create_hash
+    debug("create_hash")
+      
     #create hash from array
     @list_hash = Hash[ *@list_array.collect { |v| [ v, v ] }.flatten ]
   end
 
 
-  def upcase()
-    p $op.debug ? "==== upcase() ====\n" : ""
+  def upcase
+    debug("upcase")
 
-    create_hash()
+    create_hash
     
     up_hash = Hash.new
 
@@ -180,16 +172,16 @@ class Filelist
       up_hash[key]=key.to_s.upcase
     end
 
-    print !$op.quiet ? "Changing file names to Uppercase.\n" : nil
+    print !$op.quiet ? "Changing file names to Uppercase.\n" : {}
 
     @list_hash.merge!(up_hash)
   end #upcase
 
 
-  def downcase()
-    p $op.debug ? "==== downcase() ====\n" : ""
+  def downcase
+  debug("downcase")
 
-    create_hash()
+    create_hash
 
     down_hash = Hash.new
 
@@ -197,25 +189,23 @@ class Filelist
       down_hash[key]=key.to_s.downcase
     end
 
-    print !$op.quiet ? "Changing file names to Lowercase.\n" : nil
+    print !$op.quiet ? "Changing file names to Lowercase.\n" : {}
 
     @list_hash.merge!(down_hash)
   end #downcase
 
 
-  def trim()
-  
-    p $op.debug ? "==== trim() ====\n" : ""
+  def trim
+  debug("trim")
 
-    create_hash()
+    create_hash
 
     sub_hash = Hash.new
 
     if $op.trim == 0
       then
       puts "Trimming 0 characters does you no good!"
-      print_usage
-      exit
+      print_usage{exit}
       
     #negative trim number
     elsif $op.trim <= 0
@@ -245,15 +235,15 @@ class Filelist
   end #trim
 
 
-  def substitute()
-    p $op.debug ? "==== substitute() ====\n" : ""
-
-    create_hash()
+  def substitute
+  debug("substitute")
+  
+    create_hash
     
     #error checking for errant options
     # cannot use -all option with sub.
     begin
-      $op.all ? a = 1/0 : nil
+      $op.all ? a = 1/0 : {}
     rescue
       puts  'Ignoring the all option while performing a PATTERN substitution.'
     ensure
@@ -262,7 +252,7 @@ class Filelist
     #error checking for errant options
     # cannot use -invert option with sub.
     begin
-      $op.invert ? a = 1/0 : nil
+      $op.invert ? a = 1/0 : {}
     rescue
       puts  'Script aborted, you cannot apply a PATTERN substitution with the invert option.'
       exit #raise exception to abort program
@@ -285,8 +275,8 @@ class Filelist
   end #substitute
 
 
-  def rename_action()
-    puts $op.debug ? "==== rename_action() ====\n" : ""
+  def rename_action
+  debug("rename_action")
 
     @renamecount = 0
 
@@ -301,36 +291,48 @@ class Filelist
         File.rename(key, value)
 
         #announce renames
-        print $op.verbose == 1? "#{key}  >>>   #{value}\n" : ""
+        print $op.verbose == 1 ? "#{key}  >>>   #{value}\n" : {}
         
       else
 
         #announce clobbering
-        print $op.verbose == 1? "#{key} will clobber #{value}; rename aborted.\n" : ""
+        print $op.verbose == 1 ? "#{key} will clobber #{value}; rename aborted.\n" : {}
 
       end #anti-clobber if
     end #@list_hash.each
 
-  print $op.quiet != 1? "#{@renamecount} of #{@searchcount} files were affected.\n" : ""
+  print $op.quiet != 1 ? "#{@renamecount} of #{@searchcount} files were affected.\n" : {}
   
   end #rename_action
 end #filelist
 
 
-def print_usage()
+def print_usage
+  debug("print_usage")
+
   puts  'Usage: batch.rename [-acDilqtuvV] [PATTERN] [REPLACEMENT]'
+  block_given? ? yield : {}
 end
 
 
-def print_version()
+def print_version
+  debug("print_version")
+
   puts "Batch Rename v. #{$version}\n"
+  block_given? ? yield : {}
 end
 
 
-def print_help()
+def debug(i)
+  $op.debug == 1 ? puts("==== #{i} ====") : {}
+end
+
+
+def print_help
+  debug("printing help")
   
-  print_version()
-  print_usage()
+  print_version
+  print_usage
   puts "--------------------------------"
   puts "Batch.rename is a simple substituation based batch file renamer with several additional options."
   puts ""
@@ -358,50 +360,46 @@ def print_help()
   puts "-t --test          planned, dry run of rename, with printed results"
   puts "-r --recursive     planned, recursive rename? - maybe a baaaaad idea"
   puts "-f --force         planned, force overwriting of destination files"
-  
-
+  puts ""
+  block_given? ? yield : {}
 end
 
 
 def main()
-#  puts $op.debug ? "==== main() ====\n" : ""
-     
+  debug("DEBUG MODE ON")
+  debug("main()")
+
   $pattern = ARGV[0]
   $replacement = ARGV[1]
   $replacement ||= ''
 
-  bob = Filelist.new
-
-  if $op.help == 1
-    then
-    print_help()
-    exit
-  elsif $op.version == 1
-    then
-    print_version()
-    exit
+  case 1
+  when $op.help
+    print_help{exit}
+  when $op.version
+    print_version{exit}
   end
 
-  unless $op.all == 1
+  bob = Filelist.new
+
+
+  if $op.all != 1
     bob.pattern
   end
 
- # bob.create_hash
-
-  if $op.upcase == 1
-    then
+  case 1
+  when $op.upcase
     bob.upcase
-  elsif $op.downcase == 1
-    then
+  when $op.downcase
     bob.downcase
-  elsif $op.trim
-    then
+  when $op.trimt
     bob.trim
   else
-    bob.substitute
+    $pattern == nil ? print_usage{exit} : bob.substitute
   end
 
   bob.rename_action
+
 end #main
 
 

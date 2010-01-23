@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.5.289"
+$version = "1.5.321"
 
 # Written by Matt Jordan -
 # Insipred by Dmitry Nedospasov
@@ -25,9 +25,8 @@ args = Getopt::Declare.new(<<'EOF')
 { $op.ignore_case = 1 }
 --case              [ditto]
 
--D                  DEBUG
+--debug              DEBUG
 { $op.debug = 1 }
---debug             [ditto]
 
 -u                  upcase [excludes: -l --lowercase]
 { $op.upcase = 1 }
@@ -61,8 +60,15 @@ args = Getopt::Declare.new(<<'EOF')
 { $op.trim = value ; $op.trimt = 1}
 --trim              [ditto]
 
-EOF
+-d                  Directories
+{ $op.dirs = 1 }
+--directories       [ditto]
 
+-D                  Only Directories
+{ $op.only_dirs = 1 }
+--only_dirs         [ditto]
+
+EOF
 
 class Filelist
 
@@ -78,28 +84,34 @@ class Filelist
     rescue
       puts  'Script failed. Could not automagically retrive current working directory.'
       exit
-    ensure
     end
 
     #create an array of all the filenames - skip directories
     Dir.foreach(@dir) do |f|
       next if f == '.' or f == '..'
-      next if File.directory?(f)
+
+      #switch for directory options
+      case 1
+      when $op.only_dirs
+        next if ! File.directory?(f)
+      when   $op.dirs
+      else
+       next if File.directory?(f)
+      end
+
       @orig_list_array << f
     end #Dir
-    @list_array = @orig_list_array
 
     #Check to see if list_array is empty. - if so abort.
     begin
-      if @orig_list_array.empty?
-        a = 1/0 #raise exception to abort program
-      end
+      @orig_list_array.empty? ? a = 1/0 : {} #raise exception to abort program
     rescue
       puts "There are no files to rename. Batch is aborting.\n"
       a = 1/0 #raise exception to abort program
     ensure
     end
 
+    @list_array = @orig_list_array
     @searchcount = @orig_list_array.length
 
   end #init
@@ -290,12 +302,12 @@ class Filelist
         File.rename(key, value)
 
         #announce renames
-        print $op.verbose == 1 ? "#{key}  >>>   #{value}\n" : {}
+        verbose("#{key}  >>>   #{value}\n")
         
       else
 
         #announce clobbering
-        print $op.verbose == 1 ? "#{key} will clobber #{value}; rename aborted.\n" : {}
+        verbose("#{key} will clobber #{value}; rename aborted.\n")
 
       end #anti-clobber if
     end #@list_hash.each
@@ -327,6 +339,10 @@ def debug(i)
 end
 
 
+def verbose(i)
+  $op.verbose == 1 ? puts(i) : {}
+end
+
 def print_help
   debug("printing help")
   
@@ -341,10 +357,12 @@ def print_help
   puts "-t # --trim #      Trim Mode: (+#) characters from end or (-#) characters from beginning."
   puts "-u --upperercase   Mode. Change filenames to uppercase."
   puts "-l --lowercase     Mode. Change filenames to lowercase.\n "
+  puts "-d --dirs          Include directories in PATTERN search.  Off by default."
+  puts "-D --only-dirs     Exclude all except directories in PATTERN search."
   puts "-a --all           Disregard PATTERN, include all files in edit."
   puts "-i --invert        Invert results from PATTERN."
   puts "-c --case          Ignore case of PATTERN.\n "
-  puts "-D --debug         Print debug dialogues."
+  puts "   --debug         Print debug dialogues."
   puts "-v --version       Print program version."
   puts "-V --verbose       Verbose output."
   puts "-q --quiet         Quiet output."

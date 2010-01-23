@@ -3,11 +3,10 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.5.276"
+$version = "1.5.289"
 
-# Based on script by Dmitry Nedospasov
-# Updated & expanded by Matt Jordan -
-
+# Written by Matt Jordan -
+# Insipred by Dmitry Nedospasov
 
 require 'rubygems'
 require 'ftools'
@@ -333,33 +332,36 @@ def print_help
   
   print_version
   print_usage
-  puts "--------------------------------"
-  puts "Batch.rename is a simple substituation based batch file renamer with several additional options."
-  puts ""
-  puts "-i --invert        invert results from PATTERN"
-  puts "-c --case          ignore case of PATTERN"
-  puts "-D --debug         print debug dialogues"
-  puts "-u --upperercase"
-  puts "-l --lowercase"
-  puts "-a --all           disregard PATTERN, include all files"
-  puts "-v --version       print program version"
-  puts "-V --verbose       verbose output"
-  puts "-q --quiet         quiet output"
-  puts "-h --help          print this help output"
-  puts "-t # --trim #      trim (+#) characters from end or (-#) characters from beginning.  Will match patterns."
-  puts ""
-  puts "--index            planned, not implimented"
-  puts "-X                 planned, only affect extensions"
-  puts "-x                 planned, preserve extensions"
-  puts "--propercase       planned"
-  puts "                   planned, add extension to files lacking them"
-  puts "-A --append        planned, append to filename"
-  puts "-P --prepend       planned, prepend to filename"
-  puts "-s --step          planned, step confirmation of each file rename"
-  puts "-c --confirmation  planned, confirm results before proceeding with rename"
-  puts "-t --test          planned, dry run of rename, with printed results"
-  puts "-r --recursive     planned, recursive rename? - maybe a baaaaad idea"
-  puts "-f --force         planned, force overwriting of destination files"
+  puts "\n"
+  puts "Batch Rename is a substitution based batch file renamer with additional modes & options."
+  puts "Typically REPLACEMENT replaces the PATTERN for all filenames in the local directory.  To delete"
+  puts "the PATTERN from the file names, do not enter a REPLACEMENT.  When the editing mode is changed,"
+  puts "PATTERN acts as a search filter.  All whitespaces inside the PATTERN or REPLACEMENT should be"
+  puts "escaped with a backslash (\\), or the whole phrase should be in quotation marks (\"\" or \'\').\n\n"
+  puts "-t # --trim #      Trim Mode: (+#) characters from end or (-#) characters from beginning."
+  puts "-u --upperercase   Mode. Change filenames to uppercase."
+  puts "-l --lowercase     Mode. Change filenames to lowercase.\n "
+  puts "-a --all           Disregard PATTERN, include all files in edit."
+  puts "-i --invert        Invert results from PATTERN."
+  puts "-c --case          Ignore case of PATTERN.\n "
+  puts "-D --debug         Print debug dialogues."
+  puts "-v --version       Print program version."
+  puts "-V --verbose       Verbose output."
+  puts "-q --quiet         Quiet output."
+  puts "-h --help          Print this help."
+
+#  puts "--index            planned, not implimented"
+#  puts "-X                 planned, only affect extensions"
+#  puts "-x                 planned, preserve extensions"
+#  puts "--propercase       planned"
+#  puts "                   planned, add extension to files lacking them"
+#  puts "-A --append        planned, append to filename"
+#  puts "-P --prepend       planned, prepend to filename"
+#  puts "-s --step          planned, step confirmation of each file rename"
+#  puts "-c --confirmation  planned, confirm results before proceeding with rename"
+#  puts "-t --test          planned, dry run of rename, with printed results"
+#  puts "-r --recursive     planned, recursive rename? - maybe a baaaaad idea"
+#  puts "-f --force         planned, force overwriting of destination files"
   puts ""
   block_given? ? yield : {}
 end

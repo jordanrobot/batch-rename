@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.5.243"
+$version = "1.5.25"
 
 # Based on script by Dmitry Nedospasov
 # Updated & expanded by Matt Jordan -
@@ -66,6 +66,9 @@ puts $debug ? "==== DEBUG MODE ON ====\n" : ""
 class Filelist
 
   def initialize()
+
+
+    raise IndexError, "Name too big"   
 
     @dir = `pwd`.chomp + "/"
     @orig_list_array = Array.new
@@ -353,6 +356,8 @@ def print_help()
   puts "-c --confirmation  planned, confirm results before proceeding with rename"
   puts "-t --test          planned, dry run of rename, with printed results"
   puts "-r --recursive     planned, recursive rename? - maybe a baaaaad idea"
+  puts "-f --force         planned, force overwriting of destination files"
+  
 
 end
 

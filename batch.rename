@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.5.321"
+$version = "1.6.24"
 
 # Written by Matt Jordan -
 # Insipred by Dmitry Nedospasov
@@ -62,11 +62,19 @@ args = Getopt::Declare.new(<<'EOF')
 
 -d                  Directories
 { $op.dirs = 1 }
---directories       [ditto]
+--dirs              [ditto]
 
 -D                  Only Directories
 { $op.only_dirs = 1 }
 --only_dirs         [ditto]
+
+-A                  Append
+{ $op.append = 1 }
+--append            [ditto]
+
+-P                  Prepend
+{ $op.prepend = 1 }
+--prepend            [ditto]
 
 EOF
 
@@ -77,6 +85,7 @@ class Filelist
 
     @dir = `pwd`.chomp + "/"
     @orig_list_array = Array.new
+    @filecount = 0
 
     #check for existance of dir - abort if not
     begin
@@ -88,8 +97,9 @@ class Filelist
 
     #create an array of all the filenames - skip directories
     Dir.foreach(@dir) do |f|
-      next if f == '.' or f == '..'
 
+      next if f == '.' or f == '..'
+      @filecount += 1
       #switch for directory options
       case 1
       when $op.only_dirs
@@ -123,6 +133,7 @@ class Filelist
     begin
       $pattern == nil ? a = 1/0 : {}
     rescue
+      puts "You must supply a PATTERN or use the -a/--all option."
       print_usage{exit}
     ensure
     end
@@ -286,6 +297,24 @@ class Filelist
   end #substitute
 
 
+  def xx_pend
+  debug("xx_pend")
+
+    create_hash
+
+    #populate @list_hash values with gsubbed keys
+    sub_hash = Hash.new
+
+    @list_hash.each_key do |key,value|
+      $op.append == 1 ? sub_hash[key] = key + $replacement : {}
+      $op.prepend == 1 ? sub_hash[key] = $replacement + key : {}
+    end #each.key
+
+    @list_hash.merge!(sub_hash)
+
+  end #xx_pend
+
+
   def rename_action
   debug("rename_action")
 
@@ -312,7 +341,7 @@ class Filelist
       end #anti-clobber if
     end #@list_hash.each
 
-  print $op.quiet != 1 ? "#{@renamecount} of #{@searchcount} files were affected.\n" : {}
+  print $op.quiet != 1 ? "#{@renamecount} renames | #{@searchcount} matches | #{@filecount} objects.\n" : {}
   
   end #rename_action
 end #filelist
@@ -355,12 +384,14 @@ def print_help
   puts "PATTERN acts as a search filter.  All whitespaces inside the PATTERN or REPLACEMENT should be"
   puts "escaped with a backslash (\\), or the whole phrase should be in quotation marks (\"\" or \'\').\n\n"
   puts "-t # --trim #      Trim Mode: (+#) characters from end or (-#) characters from beginning."
-  puts "-u --upperercase   Mode. Change filenames to uppercase."
-  puts "-l --lowercase     Mode. Change filenames to lowercase.\n "
+  puts "-u --upperercase   Uppercase mode. Change filenames to uppercase. Requires PATTERN or the -all option."
+  puts "-l --lowercase     Lowercase mode. Change filenames to lowercase. Requires PATTERN or the -all option."
+  puts "-A --append        Append mode.  Requires PATTERN or the -all option."
+  puts "-P --prepend       Prepend mode.  Requires PATTERN or the -all option.\n "
   puts "-d --dirs          Include directories in PATTERN search.  Off by default."
   puts "-D --only-dirs     Exclude all except directories in PATTERN search."
   puts "-a --all           Disregard PATTERN, include all files in edit."
-  puts "-i --invert        Invert results from PATTERN."
+  puts "-i --invert        Invert results from PATTERN.  Not compatible with all options."
   puts "-c --case          Ignore case of PATTERN.\n "
   puts "   --debug         Print debug dialogues."
   puts "-v --version       Print program version."
@@ -389,9 +420,24 @@ def main()
   debug("DEBUG MODE ON")
   debug("main()")
 
+if $op.prepend == 1 or $op.append == 1
+  then
+
+  if ARGV[1] && ARGV[0] != nil
+      $pattern = ARGV[0]
+      $replacement = ARGV[1]
+    elsif ARGV[0] != nil
+      $replacement = ARGV[0]
+    end
+
+  else
   $pattern = ARGV[0]
   $replacement = ARGV[1]
   $replacement ||= ''
+end
+
+debug("PATTERN: #{$pattern}")
+debug("REPLACEMENT: #{$replacement}")
 
   case 1
   when $op.help
@@ -414,6 +460,10 @@ def main()
     bob.downcase
   when $op.trimt
     bob.trim
+  when $op.append
+    bob.xx_pend
+  when $op.prepend
+    bob.xx_pend
   else
     $pattern == nil ? print_usage{exit} : bob.substitute
   end

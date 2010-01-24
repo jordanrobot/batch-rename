@@ -3,10 +3,11 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.6.24"
+$version = "1.6.31"
 
 # Written by Matt Jordan -
-# Insipred by Dmitry Nedospasov
+# Insipred by Dmitry Nedospasov's batch rename script at:
+# http://nedos.net/2009/02/20/ruby-batch-rename-script/
 
 require 'rubygems'
 require 'ftools'
@@ -14,7 +15,6 @@ require 'Getopt/Declare'
 require 'ostruct'
 
 $op = OpenStruct.new
-
 args = Getopt::Declare.new(<<'EOF')
 
 -i                  invert [requires: (-u || --uppercase) || (-l || --lowercase)] [excludes: -a --all]
@@ -75,6 +75,10 @@ args = Getopt::Declare.new(<<'EOF')
 -P                  Prepend
 { $op.prepend = 1 }
 --prepend            [ditto]
+
+-f                  Force
+{ $op.force = 1 }
+--force             [ditto]
 
 EOF
 
@@ -316,33 +320,42 @@ class Filelist
 
 
   def rename_action
-  debug("rename_action")
-
+    debug("rename_action")
     @renamecount = 0
 
     #get rid of empty values in the hash.
     @list_hash.delete_if { |key, value| value == '' }
-    @list_hash.each_pair do |key, value|
 
-      #check for duplicate key/value, & files - prevent clobbering
-      if key != value and not @orig_list_array.include?(value)
-        @renamecount += 1
-
-        File.rename(key, value)
-
-        #announce renames
-        verbose("#{key}  >>>   #{value}\n")
-        
-      else
-
-        #announce clobbering
-        verbose("#{key} will clobber #{value}; rename aborted.\n")
-
-      end #anti-clobber if
-    end #@list_hash.each
-
-  print $op.quiet != 1 ? "#{@renamecount} renames | #{@searchcount} matches | #{@filecount} objects.\n" : {}
+      @list_hash.each_pair do |key, value|
   
+        #check for duplicate key/value, & files - prevent clobbering
+        if key != value and not @orig_list_array.include?(value)
+          
+          #rename clobber-free
+          File.rename(key, value)
+          @renamecount += 1
+          verbose("#{key}  >>>  #{value}\n")
+
+        else
+
+          if $op.force != 1
+            #announce clobbering
+            verbose("#{key} will clobber #{value}; rename aborted.\n")
+
+          else
+            
+            @renamecount += 1
+            File.rename(key, value)
+            verbose("#{key}  >>>  #{value}; (clobbered).\n")
+          end #if $opt.force
+
+        end #if anti-clobber
+      end #@list_hash.each
+
+
+
+  print $op.quiet != 1 ? "#{@renamecount} renames | #{@searchcount} considered | #{@filecount} objects.\n" : {}
+
   end #rename_action
 end #filelist
 
@@ -350,7 +363,7 @@ end #filelist
 def print_usage
   debug("print_usage")
 
-  puts  'Usage: batch.rename [-acDilqtuvV] [PATTERN] [REPLACEMENT]'
+  puts  'Usage: batch.rename [-acDilqtuvV] <PATTERN> <REPLACEMENT>'
   block_given? ? yield : {}
 end
 
@@ -377,46 +390,46 @@ def print_help
   
   print_version
   print_usage
-  puts "\n"
-  puts "Batch Rename is a substitution based batch file renamer with additional modes & options."
-  puts "Typically REPLACEMENT replaces the PATTERN for all filenames in the local directory.  To delete"
-  puts "the PATTERN from the file names, do not enter a REPLACEMENT.  When the editing mode is changed,"
-  puts "PATTERN acts as a search filter.  All whitespaces inside the PATTERN or REPLACEMENT should be"
-  puts "escaped with a backslash (\\), or the whole phrase should be in quotation marks (\"\" or \'\').\n\n"
-  puts "-t # --trim #      Trim Mode: (+#) characters from end or (-#) characters from beginning."
-  puts "-u --upperercase   Uppercase mode. Change filenames to uppercase. Requires PATTERN or the -all option."
-  puts "-l --lowercase     Lowercase mode. Change filenames to lowercase. Requires PATTERN or the -all option."
-  puts "-A --append        Append mode.  Requires PATTERN or the -all option."
-  puts "-P --prepend       Prepend mode.  Requires PATTERN or the -all option.\n "
-  puts "-d --dirs          Include directories in PATTERN search.  Off by default."
-  puts "-D --only-dirs     Exclude all except directories in PATTERN search."
-  puts "-a --all           Disregard PATTERN, include all files in edit."
-  puts "-i --invert        Invert results from PATTERN.  Not compatible with all options."
-  puts "-c --case          Ignore case of PATTERN.\n "
-  puts "   --debug         Print debug dialogues."
-  puts "-v --version       Print program version."
-  puts "-V --verbose       Verbose output."
-  puts "-q --quiet         Quiet output."
-  puts "-h --help          Print this help."
-
-#  puts "--index            planned, not implimented"
-#  puts "-X                 planned, only affect extensions"
-#  puts "-x                 planned, preserve extensions"
-#  puts "--propercase       planned"
-#  puts "                   planned, add extension to files lacking them"
-#  puts "-A --append        planned, append to filename"
-#  puts "-P --prepend       planned, prepend to filename"
-#  puts "-s --step          planned, step confirmation of each file rename"
-#  puts "-c --confirmation  planned, confirm results before proceeding with rename"
-#  puts "-t --test          planned, dry run of rename, with printed results"
-#  puts "-r --recursive     planned, recursive rename? - maybe a baaaaad idea"
-#  puts "-f --force         planned, force overwriting of destination files"
-  puts ""
+  
+  puts <<END
+Batch Rename is a substitution based batch file renamer with additional modes & options.
+Typically REPLACEMENT replaces the PATTERN for all filenames in the local directory.  To delete
+the PATTERN from the file names, do not enter a REPLACEMENT.  When the editing mode is changed,
+PATTERN acts as a search filter.  All whitespaces inside the PATTERN or REPLACEMENT should be
+escaped with a backslash (\\), or the whole phrase should be in quotation marks.\n\n
+-t <num> --trim <num> Trim Mode: +number of characters from end or -number characters from beginning.
+-u --upperercase      Uppercase mode. Change filenames to uppercase. Requires PATTERN or the -all option.
+-l --lowercase        Lowercase mode. Change filenames to lowercase. Requires PATTERN or the -all option.
+-A --append           Append mode.  -A <PATTERN> <REPLACEMENT>  or  -Aa <REPLACEMENT>.
+-P --prepend          Prepend mode.  -P <PATTERN> <REPLACEMENT>  or  -Pa <REPLACEMENT>.\n
+-d --dirs             Include directories in PATTERN search.  Off by default.
+-D --only-dirs        Exclude all except directories in PATTERN search.
+-a --all              Disregard PATTERN, include all files in edit.
+-i --invert           Invert results from PATTERN.  Not compatible with all options.
+-c --case             Ignore case of PATTERN.
+-f --force            Force file name clobbering. Use with great care...\n
+   --debug            Print debug dialogues.
+-v --version          Print program version.
+-V --verbose          Verbose output.
+-q --quiet            Quiet output.
+-h --help             Print this help.\n
+END
+  
+# --index            planned, not implimented
+# -X                 planned, only affect extensions
+# -x                 planned, preserve extensions
+# --propercase       planned
+#                    planned, add extension to files lacking them
+# -s --step          planned, step confirmation of each file rename
+# -c --confirmation  planned, confirm results before proceeding with rename
+# -t --test          planned, dry run of rename, with printed results
+# -r --regex         planned, regex support for PATTERN
+# -R --recursive     planned, recursive rename? - maybe a baaaaad idea
   block_given? ? yield : {}
 end
 
 
-def main()
+def batch_rename()
   debug("DEBUG MODE ON")
   debug("main()")
 
@@ -470,10 +483,8 @@ debug("REPLACEMENT: #{$replacement}")
 
   bob.rename_action
 
-end #main
+end #batch_rename()
 
-
-#begin
-main()
-#rescue
-#end
+if __FILE__ == $0
+  batch_rename()
+end

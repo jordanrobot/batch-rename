@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.6.31"
+$version = "1.6.99"
 
 # Written by Matt Jordan -
 # Insipred by Dmitry Nedospasov's batch rename script at:
@@ -81,6 +81,20 @@ args = Getopt::Declare.new(<<'EOF')
 --force             [ditto]
 
 EOF
+class String
+  def to_regexp
+    return Regexp.new(self) unless
+self.strip.match(/\A\/(.*)\/(.*)\Z/mx)
+    regexp , flags = $1 , $2
+    return nil if !regexp || flags =~ /[^xim]/m
+
+    x = /x/.match(flags) && Regexp::EXTENDED
+    i = /i/.match(flags) && Regexp::IGNORECASE
+    m = /m/.match(flags) && Regexp::MULTILINE
+
+    Regexp.new regexp , [x,i,m].inject(0){|a,f| f ? a+f : a }
+  end
+end
 
 class Filelist
 
@@ -104,6 +118,7 @@ class Filelist
 
       next if f == '.' or f == '..'
       @filecount += 1
+
       #switch for directory options
       case 1
       when $op.only_dirs
@@ -130,44 +145,20 @@ class Filelist
 
   end #init
 
+
   def pattern
   debug("pattern")
-    
-    # Error check - abort if no pattern!
-    begin
-      $pattern == nil ? a = 1/0 : {}
-    rescue
-      puts "You must supply a PATTERN or use the -a/--all option."
-      print_usage{exit}
-    ensure
-    end
-    
+
     positive_array = Array.new
     negative_array = Array.new
-
-    #search for matching patterns - divy the results into two arrays
-    # Also deal with the ignore case switch here.
-    if $op.ignore_case == 1
+    
       @orig_list_array.each do |a|
-        #search for match to pattern
-        if a.downcase.include?($pattern.downcase)
+        if ($pattern_re).match(a)
           positive_array << a
         else
           negative_array << a
         end
       end #@list_array.each
-
-    else
-      @orig_list_array.each do |a|
-        #search for match to pattern
-        if a.include?($pattern)
-          positive_array << a
-        else
-          negative_array << a
-        end
-      end #@list_array.each
-    end #if $op.ignore_case
-
 
     #Deal with inversion pattern here:
     if $op.invert == 1
@@ -179,9 +170,61 @@ class Filelist
   end #pattern
 
 
+
+    def pattern_xxxx
+    debug("pattern")
+
+      # Error check - abort if no pattern!
+      begin
+        $pattern == nil ? a = 1/0 : {}
+      rescue
+        puts "You must supply a PATTERN or use the -a/--all option."
+        print_usage{exit}
+      ensure
+      end    
+
+      positive_array = Array.new
+      negative_array = Array.new
+
+      #search for matching patterns - divy the results into two arrays
+      # Also deal with the ignore case switch here.
+      if $op.ignore_case == 1
+        @orig_list_array.each do |a|
+          #search for match to pattern
+          if a.downcase.include?($pattern.downcase)
+            positive_array << a
+          else
+            negative_array << a
+          end
+        end #@list_array.each
+
+      else
+
+        @orig_list_array.each do |a|
+          #search for match to pattern
+          if a.include?($pattern)
+
+            positive_array << a
+          else
+            negative_array << a
+          end
+        end #@list_array.each
+     end #if $op.ignore_case
+
+
+      #Deal with inversion pattern here:
+      if $op.invert == 1
+        @list_array = negative_array
+      else
+        @list_array = positive_array
+      end
+    end #pattern
+
+
+
   def create_hash
     debug("create_hash")
-      
+    
     #create hash from array
     @list_hash = Hash[ *@list_array.collect { |v| [ v, v ] }.flatten ]
   end
@@ -265,7 +308,7 @@ class Filelist
   debug("substitute")
   
     create_hash
-    
+
     #error checking for errant options
     # cannot use -all option with sub.
     begin
@@ -289,11 +332,7 @@ class Filelist
     sub_hash = Hash.new
 
     @list_hash.each_key do |key,value|
-      if $op.ignore_case == 1
-        sub_hash[key] = key.gsub(/#{$pattern}/i,$replacement)
-      else
-        sub_hash[key] = key.gsub($pattern,$replacement)
-      end #if
+        sub_hash[key] = key.gsub($pattern_re,$replacement)
     end #each.key
 
     @list_hash.merge!(sub_hash)
@@ -357,6 +396,7 @@ class Filelist
   print $op.quiet != 1 ? "#{@renamecount} renames | #{@searchcount} considered | #{@filecount} objects.\n" : {}
 
   end #rename_action
+
 end #filelist
 
 
@@ -448,6 +488,10 @@ if $op.prepend == 1 or $op.append == 1
   $replacement = ARGV[1]
   $replacement ||= ''
 end
+
+# set the switch for the Ignore Case option
+$op.ignore_case != 1 ? $pattern_re = "/#{$pattern}/".to_regexp : $pattern_re = "/#{$pattern}/i".to_regexp
+
 
 debug("PATTERN: #{$pattern}")
 debug("REPLACEMENT: #{$replacement}")

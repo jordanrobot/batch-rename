@@ -21,6 +21,11 @@ trim will trim files to 0 characters long - fix this
 
 # => Regex support?
 # => Wildcard & globbing support!
+  #	? - match any one known character
+  # * - match any number of unknown characters
+  # [] - match a character as part of a group of characters
+  # \ - escape character
+
 
 ### All option; -a --all
 # => disregard PATTERN matching; do these things to all files.

@@ -3,7 +3,7 @@
 ########################
 ###   Batch Rename   ###
 ########################
-$version = "1.6.99"
+$version = "1.6.111"
 
 # Written by Matt Jordan -
 # Insipred by Dmitry Nedospasov's batch rename script at:
@@ -74,11 +74,19 @@ args = Getopt::Declare.new(<<'EOF')
 
 -P                  Prepend
 { $op.prepend = 1 }
---prepend            [ditto]
+--prepend           [ditto]
 
--f                  Force
+-F                  Force
 { $op.force = 1 }
 --force             [ditto]
+
+-c                  Confirm
+{ $op.confirm = 1 }
+--confirm           [ditto]
+
+-s                  Step-Confirm
+{ $op.step = 1 }
+--step              [ditto]
 
 EOF
 class String
@@ -149,6 +157,12 @@ class Filelist
   def pattern
   debug("pattern")
 
+  # Error check - abort if no pattern!
+  if $pattern == nil
+    puts "You must supply a PATTERN or use the -a/--all option."
+    print_usage{exit}
+  end
+
     positive_array = Array.new
     negative_array = Array.new
     
@@ -170,58 +184,6 @@ class Filelist
   end #pattern
 
 
-
-    def pattern_xxxx
-    debug("pattern")
-
-      # Error check - abort if no pattern!
-      begin
-        $pattern == nil ? a = 1/0 : {}
-      rescue
-        puts "You must supply a PATTERN or use the -a/--all option."
-        print_usage{exit}
-      ensure
-      end    
-
-      positive_array = Array.new
-      negative_array = Array.new
-
-      #search for matching patterns - divy the results into two arrays
-      # Also deal with the ignore case switch here.
-      if $op.ignore_case == 1
-        @orig_list_array.each do |a|
-          #search for match to pattern
-          if a.downcase.include?($pattern.downcase)
-            positive_array << a
-          else
-            negative_array << a
-          end
-        end #@list_array.each
-
-      else
-
-        @orig_list_array.each do |a|
-          #search for match to pattern
-          if a.include?($pattern)
-
-            positive_array << a
-          else
-            negative_array << a
-          end
-        end #@list_array.each
-     end #if $op.ignore_case
-
-
-      #Deal with inversion pattern here:
-      if $op.invert == 1
-        @list_array = negative_array
-      else
-        @list_array = positive_array
-      end
-    end #pattern
-
-
-
   def create_hash
     debug("create_hash")
     
@@ -241,7 +203,7 @@ class Filelist
       up_hash[key]=key.to_s.upcase
     end
 
-    print !$op.quiet ? "Changing file names to Uppercase.\n" : {}
+    loud("Changing file names to Uppercase.")
 
     @list_hash.merge!(up_hash)
   end #upcase
@@ -258,7 +220,7 @@ class Filelist
       down_hash[key]=key.to_s.downcase
     end
 
-    print !$op.quiet ? "Changing file names to Lowercase.\n" : {}
+    loud("Changing file names to Lowercase.")
 
     @list_hash.merge!(down_hash)
   end #downcase
@@ -311,21 +273,14 @@ class Filelist
 
     #error checking for errant options
     # cannot use -all option with sub.
-    begin
-      $op.all ? a = 1/0 : {}
-    rescue
-      puts  'Ignoring the all option while performing a PATTERN substitution.'
-    ensure
-    end
-
-    #error checking for errant options
     # cannot use -invert option with sub.
-    begin
-      $op.invert ? a = 1/0 : {}
-    rescue
+
+    case 1
+    when $op.all
+      puts  'Ignoring the all option while performing a PATTERN substitution.'
+    when $op.invert
       puts  'Script aborted, you cannot apply a PATTERN substitution with the invert option.'
-      exit #raise exception to abort program
-    ensure
+      exit
     end
 
     #populate @list_hash values with gsubbed keys
@@ -361,6 +316,7 @@ class Filelist
   def rename_action
     debug("rename_action")
     @renamecount = 0
+    @clobbercount = 0
 
     #get rid of empty values in the hash.
     @list_hash.delete_if { |key, value| value == '' }
@@ -383,17 +339,21 @@ class Filelist
 
           else
             
-            @renamecount += 1
             File.rename(key, value)
-            verbose("#{key}  >>>  #{value}; (clobbered).\n")
+            @clobbercount += 1
+            @renamecount += 1
+            verbose("#{key}  >>>  #{value}\n")
           end #if $opt.force
 
         end #if anti-clobber
       end #@list_hash.each
 
 
-
-  print $op.quiet != 1 ? "#{@renamecount} renames | #{@searchcount} considered | #{@filecount} objects.\n" : {}
+      if $op.force == 1 
+        loud("#{@renamecount} renames | #{@clobbercount} clobbered | #{@searchcount} considered | #{@filecount} objects.")
+      else
+        loud("#{@renamecount} renames | #{@searchcount} considered | #{@filecount} objects.")
+      end
 
   end #rename_action
 
@@ -425,6 +385,12 @@ def verbose(i)
   $op.verbose == 1 ? puts(i) : {}
 end
 
+
+def loud(i)
+  $op.quiet != 1 ? puts("#{i}") : {}
+end
+
+
 def print_help
   debug("printing help")
   
@@ -447,12 +413,14 @@ escaped with a backslash (\\), or the whole phrase should be in quotation marks.
 -a --all              Disregard PATTERN, include all files in edit.
 -i --invert           Invert results from PATTERN.  Not compatible with all options.
 -c --case             Ignore case of PATTERN.
--f --force            Force file name clobbering. Use with great care...\n
-   --debug            Print debug dialogues.
+-F --force            Force file name clobbering. Use with great care...\n
+-c --confirm          Confirmation prompt with report before proceeding with operation.
+-s --step             Confirmation prompts given file by file.
 -v --version          Print program version.
 -V --verbose          Verbose output.
 -q --quiet            Quiet output.
--h --help             Print this help.\n
+-h --help             Print this help.
+   --debug            Print debug dialogues.\n
 END
   
 # --index            planned, not implimented

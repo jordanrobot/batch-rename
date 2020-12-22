@@ -1,11 +1,6 @@
 
 # --- TODO ---
 
-# --- Bugs ---
-
-trim will trim files to 0 characters long - fix this
-
-
 ### Error Checking
 # => check if target filename already exists
   # error on name collisions or continue and report after?
@@ -144,8 +139,6 @@ trim will trim files to 0 characters long - fix this
 # => Get files -> get list of files
 # => Perform Actions
 
-#Object -> start with a hash of all file names in directory
-
 
 ###############################
 ### Rename Engine Structure ###
@@ -154,11 +147,10 @@ trim will trim files to 0 characters long - fix this
 
 ### Mode Structure
 # => Multiple modes? Original PATTERN + GSUB not the heart of the script?
-# => Or make the Original PATTERN + GSUB mode heliocentric, with all other
-  # functionality requiring options?
+# => Or make the Original PATTERN + GSUB mode heliocentric, with all other functionality requiring options?
 
 # => modular
 # => enable features & engine differences with flags?
-# => write seperate cases depending on options?
-  # => not very flexible, harder to use seperate options together
-# => seperate cases and modifier options (with flags?)
+# => write separate cases depending on options?
+  # => not very flexible, harder to use separate options together
+# => separate cases and modifier options (with flags?)

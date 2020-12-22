@@ -1,10 +1,15 @@
 #!/usr/bin/ruby
 
 ########################
-###   Batch Rename   ###
+##=   Batch Rename   =##
 ########################
-$version = "1.6.111"
-
+$version = "1.6.118"
+# 
+# Batch Rename is a substitution based batch file renamer with 
+# additional modes & options. The basic mode of use is the given
+# REPLACEMENT text replaces the PATTERN text in all filenames in
+# the current working  Pdirectory.
+#
 # Written by Matt Jordan -
 # Insipred by Dmitry Nedospasov's batch rename script at:
 # http://nedos.net/2009/02/20/ruby-batch-rename-script/
@@ -14,6 +19,7 @@ require 'ftools'
 require 'Getopt/Declare'
 require 'ostruct'
 
+# Parse cli options into the $op OpenStruct with GetoptDeclare.
 $op = OpenStruct.new
 args = Getopt::Declare.new(<<'EOF')
 
@@ -89,10 +95,11 @@ args = Getopt::Declare.new(<<'EOF')
 --step              [ditto]
 
 EOF
+
 class String
   def to_regexp
     return Regexp.new(self) unless
-self.strip.match(/\A\/(.*)\/(.*)\Z/mx)
+    self.strip.match(/\A\/(.*)\/(.*)\Z/mx)
     regexp , flags = $1 , $2
     return nil if !regexp || flags =~ /[^xim]/m
 
@@ -104,23 +111,108 @@ self.strip.match(/\A\/(.*)\/(.*)\Z/mx)
   end
 end
 
-class Filelist
+module Output
 
+  # method to print usage when $op.usage is set. Will execute code given in block.
+  def print_usage
+    debug("print_usage")
+
+    loud('Usage: batch.rename [-acDilqtuvV] <PATTERN> <REPLACEMENT>')
+    block_given? ? yield : {}
+  end
+
+  # method to print version when $op.version is set. Will execute code given in block.
+  def print_version
+    debug("print_version")
+
+    puts "Batch Rename v. #{$version}\n"
+    block_given? ? yield : {}
+  end
+
+  # method to print info when $op.debug is set. Will execute code given in block.
+  def debug(i)
+    # $op.debug == 1 ? puts("==== #{i} ====") : {}
+  end
+
+  # method to print info when $op.verbose is set
+  def verbose(i)
+    $op.verbose == 1 ? puts(i) : {}
+  end
+
+  # method to print info when $op.quiet is not set
+  def loud(i)
+    $op.quiet != 1 ? puts(i) : {}
+  end
+
+  # method to print help when $op.help is set. Will execute code given in block.
+  def print_help
+    debug("printing help")
+
+    print_version
+    print_usage
+
+    puts <<END
+
+  Batch Rename is a substitution based batch file renamer with additional modes & options.
+  Typically REPLACEMENT replaces the PATTERN for all filenames in the local directory.  To delete
+  the PATTERN from the file names, do not enter a REPLACEMENT.  When the editing mode is changed,
+  PATTERN acts as a search filter.  All whitespaces inside the PATTERN or REPLACEMENT should be
+  escaped with a backslash (\\), or the whole phrase should be in quotation marks.
+
+  -t <num> --trim <num> Trim Mode: +number of characters from end or -number characters from beginning.
+  -u --upperercase      Uppercase mode. Change filenames to uppercase. Requires PATTERN or the -all option.
+  -l --lowercase        Lowercase mode. Change filenames to lowercase. Requires PATTERN or the -all option.
+  -A --append           Append mode.  -A <PATTERN> <REPLACEMENT>  or  -Aa <REPLACEMENT>.
+  -P --prepend          Prepend mode.  -P <PATTERN> <REPLACEMENT>  or  -Pa <REPLACEMENT>.
+
+  -d --dirs             Include directories in PATTERN search.  Off by default.
+  -D --only-dirs        Exclude all except directories in PATTERN search.
+  -a --all              Disregard PATTERN, include all files in edit.
+  -i --invert           Invert results from PATTERN.  Not compatible with all options.
+  -c --case             Ignore case of PATTERN.
+  -F --force            Force file name clobbering. Use with great care...
+
+  -c --confirm          Confirmation prompt with report before proceeding with operation.
+  -s --step             Confirmation prompts given file by file.
+  -v --version          Print program version.
+  -V --verbose          Verbose output.
+  -q --quiet            Quiet output.
+  -h --help             Print this help.
+     --debug            Print debug dialogues.
+END
+
+  # --index            planned, not implimented
+  # -X                 planned, only affect extensions
+  # -x                 planned, preserve extensions
+  # --propercase       planned
+  #                    planned, add extension to files lacking them
+  # -s --step          planned, step confirmation of each file rename
+  # -c --confirmation  planned, confirm results before proceeding with rename
+  # -t --test          planned, dry run of rename, with printed results
+  # -r --regex         planned, regex support for PATTERN
+  # -R --recursive     planned, recursive rename? - maybe a baaaaad idea
+    block_given? ? yield : {}
+  end
+  
+end
+
+
+class Filelist
+  include Output
+  
   def initialize()
-  debug("initializing Filelist")
+  debug("Initializing the Filelist Object.")
 
     @dir = `pwd`.chomp + "/"
     @orig_list_array = Array.new
     @filecount = 0
 
     #check for existance of dir - abort if not
-    begin
-      @dir == nil ? a = 1/0 : {}
-    rescue
-      puts  'Script failed. Could not automagically retrive current working directory.'
+    if @dir == nil
+      loud('Script failed. Could not automagically retrive current working directory.')
       exit
     end
-
+    
     #create an array of all the filenames - skip directories
     Dir.foreach(@dir) do |f|
 
@@ -153,9 +245,9 @@ class Filelist
 
   end #init
 
-
+# method filters the filelist array based upon the PATTERN and the options.
   def pattern
-  debug("pattern")
+  Output::debug("pattern")
 
   # Error check - abort if no pattern!
   if $pattern == nil
@@ -183,17 +275,17 @@ class Filelist
 
   end #pattern
 
-
+# method creates a hash from the array of filenames.  The keys are the original filenames, and the values will be populated by the replacement filenames, based upon which option is selected.
   def create_hash
-    debug("create_hash")
+    Output::debug("create_hash")
     
     #create hash from array
     @list_hash = Hash[ *@list_array.collect { |v| [ v, v ] }.flatten ]
   end
 
-
+# method to change filesnames to upper-case
   def upcase
-    debug("upcase")
+    Output::debug("upcase")
 
     create_hash
     
@@ -208,9 +300,9 @@ class Filelist
     @list_hash.merge!(up_hash)
   end #upcase
 
-
+# method to change filenames to lower-case
   def downcase
-  debug("downcase")
+  Output::debug("downcase")
 
     create_hash
 
@@ -225,17 +317,16 @@ class Filelist
     @list_hash.merge!(down_hash)
   end #downcase
 
-
+# method that trims specified number of characters from the filenames.
   def trim
-  debug("trim")
+ Output::debug("trim")
 
     create_hash
-
     sub_hash = Hash.new
 
     if $op.trim == 0
       then
-      puts "Trimming 0 characters does you no good!"
+      loud("Trimming 0 characters does you no good!")
       print_usage{exit}
       
     #negative trim number
@@ -265,9 +356,9 @@ class Filelist
   
   end #trim
 
-
+# method that substitutes via gsub
   def substitute
-  debug("substitute")
+  Output::debug("substitute")
   
     create_hash
 
@@ -277,9 +368,9 @@ class Filelist
 
     case 1
     when $op.all
-      puts  'Ignoring the all option while performing a PATTERN substitution.'
+      loud('Ignoring the all option while performing a PATTERN substitution.')
     when $op.invert
-      puts  'Script aborted, you cannot apply a PATTERN substitution with the invert option.'
+      loud('Script aborted, you cannot apply a PATTERN substitution with the invert option.')
       exit
     end
 
@@ -294,7 +385,7 @@ class Filelist
 
   end #substitute
 
-
+# method to perform append and prepend operations.
   def xx_pend
   debug("xx_pend")
 
@@ -312,7 +403,7 @@ class Filelist
 
   end #xx_pend
 
-
+# method that renames the files.
   def rename_action
     debug("rename_action")
     @renamecount = 0
@@ -357,89 +448,23 @@ class Filelist
 
   end #rename_action
 
+  # method to test give option for given value and print given text. Will execute code given in block.
+  def option_check(var, tf, text)
+      if var == tf
+        puts text
+      end
+
+      block_given? ? yield : {}
+  end
+  
 end #filelist
 
 
-def print_usage
-  debug("print_usage")
-
-  puts  'Usage: batch.rename [-acDilqtuvV] <PATTERN> <REPLACEMENT>'
-  block_given? ? yield : {}
-end
-
-
-def print_version
-  debug("print_version")
-
-  puts "Batch Rename v. #{$version}\n"
-  block_given? ? yield : {}
-end
-
-
-def debug(i)
-  $op.debug == 1 ? puts("==== #{i} ====") : {}
-end
-
-
-def verbose(i)
-  $op.verbose == 1 ? puts(i) : {}
-end
-
-
-def loud(i)
-  $op.quiet != 1 ? puts("#{i}") : {}
-end
-
-
-def print_help
-  debug("printing help")
-  
-  print_version
-  print_usage
-  
-  puts <<END
-Batch Rename is a substitution based batch file renamer with additional modes & options.
-Typically REPLACEMENT replaces the PATTERN for all filenames in the local directory.  To delete
-the PATTERN from the file names, do not enter a REPLACEMENT.  When the editing mode is changed,
-PATTERN acts as a search filter.  All whitespaces inside the PATTERN or REPLACEMENT should be
-escaped with a backslash (\\), or the whole phrase should be in quotation marks.\n\n
--t <num> --trim <num> Trim Mode: +number of characters from end or -number characters from beginning.
--u --upperercase      Uppercase mode. Change filenames to uppercase. Requires PATTERN or the -all option.
--l --lowercase        Lowercase mode. Change filenames to lowercase. Requires PATTERN or the -all option.
--A --append           Append mode.  -A <PATTERN> <REPLACEMENT>  or  -Aa <REPLACEMENT>.
--P --prepend          Prepend mode.  -P <PATTERN> <REPLACEMENT>  or  -Pa <REPLACEMENT>.\n
--d --dirs             Include directories in PATTERN search.  Off by default.
--D --only-dirs        Exclude all except directories in PATTERN search.
--a --all              Disregard PATTERN, include all files in edit.
--i --invert           Invert results from PATTERN.  Not compatible with all options.
--c --case             Ignore case of PATTERN.
--F --force            Force file name clobbering. Use with great care...\n
--c --confirm          Confirmation prompt with report before proceeding with operation.
--s --step             Confirmation prompts given file by file.
--v --version          Print program version.
--V --verbose          Verbose output.
--q --quiet            Quiet output.
--h --help             Print this help.
-   --debug            Print debug dialogues.\n
-END
-  
-# --index            planned, not implimented
-# -X                 planned, only affect extensions
-# -x                 planned, preserve extensions
-# --propercase       planned
-#                    planned, add extension to files lacking them
-# -s --step          planned, step confirmation of each file rename
-# -c --confirmation  planned, confirm results before proceeding with rename
-# -t --test          planned, dry run of rename, with printed results
-# -r --regex         planned, regex support for PATTERN
-# -R --recursive     planned, recursive rename? - maybe a baaaaad idea
-  block_given? ? yield : {}
-end
-
-
+# method that contains the switching logic for the program.
 def batch_rename()
+  include Output
   debug("DEBUG MODE ON")
-  debug("main()")
+  debug("batch_rename()")
 
 if $op.prepend == 1 or $op.append == 1
   then
@@ -474,9 +499,7 @@ debug("REPLACEMENT: #{$replacement}")
   bob = Filelist.new
 
 
-  if $op.all != 1
-    bob.pattern
-  end
+  $op.all == 1 ? next : bob.pattern
 
   case 1
   when $op.upcase

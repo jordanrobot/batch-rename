@@ -1,0 +1,7 @@
+# --- Bugs ---
+
+trim still overwrites files even without --force on.
+trim does not report correct clobbers with --force on.
+batch.rename -aFt 1 -> results in "Ignoring the all option..."
+batch.rename -Fat 1 -> does not work, but does not print the above
+
